@@ -1,0 +1,1870 @@
+#include "MOS6502.h"
+#include <stdio.h>
+
+MOS6502::MOS6502() {  
+    
+    int i;
+    for (i=0; i<256; i++)
+        instruction[i] = NULL;
+    
+    instruction[0x01] = &MOS6502::ORA_IND_X;
+    instruction[0x05] = &MOS6502::ORA_ZPG;
+    instruction[0x06] = &MOS6502::ASL_ZPG;
+    instruction[0x09] = &MOS6502::ORA_IMM;
+    instruction[0x0A] = &MOS6502::ASL_ACC;
+    instruction[0x0D] = &MOS6502::ORA_ABS;
+    instruction[0x0E] = &MOS6502::ASL_ABS;
+    instruction[0x11] = &MOS6502::ORA_IND_Y;
+    instruction[0x15] = &MOS6502::ORA_ZPG_X;
+    instruction[0x16] = &MOS6502::ASL_ZPG_X;
+    instruction[0x19] = &MOS6502::ORA_ABS_Y;
+    instruction[0x1D] = &MOS6502::ORA_ABS_X;
+    instruction[0x1E] = &MOS6502::ASL_ABS_X;
+    instruction[0x20] = &MOS6502::JSR;
+    instruction[0x21] = &MOS6502::AND_IND_X;
+    instruction[0x25] = &MOS6502::AND_ZPG;
+    instruction[0x26] = &MOS6502::ROL_ZPG;
+    instruction[0x29] = &MOS6502::AND_IMM;
+    instruction[0x2A] = &MOS6502::ROL_ACC;
+    instruction[0x2D] = &MOS6502::AND_ABS;
+    instruction[0x2E] = &MOS6502::ROL_ABS;
+    instruction[0x31] = &MOS6502::AND_IND_Y;
+    instruction[0x39] = &MOS6502::AND_ABS_Y;
+    instruction[0x35] = &MOS6502::AND_ZPG_X;
+    instruction[0x36] = &MOS6502::ROL_ZPG_X;
+    instruction[0x3D] = &MOS6502::AND_ABS_X;
+    instruction[0x3E] = &MOS6502::ROL_ABS_X;
+    instruction[0x41] = &MOS6502::EOR_IND_X;
+    instruction[0x45] = &MOS6502::EOR_ZPG;
+    instruction[0x46] = &MOS6502::LSR_ZPG;
+    instruction[0x49] = &MOS6502::EOR_IMM;
+    instruction[0x4A] = &MOS6502::LSR_ACC;
+    instruction[0x4C] = &MOS6502::JMP_ABS;
+    instruction[0x4D] = &MOS6502::EOR_ABS;
+    instruction[0x4E] = &MOS6502::LSR_ABS;
+    instruction[0x51] = &MOS6502::EOR_IND_Y;
+    instruction[0x55] = &MOS6502::EOR_ZPG_X;
+    instruction[0x56] = &MOS6502::LSR_ZPG_X;
+    instruction[0x59] = &MOS6502::EOR_ABS_Y;
+    instruction[0x5D] = &MOS6502::EOR_ABS_X;
+    instruction[0x5E] = &MOS6502::LSR_ABS_X;
+    instruction[0x60] = &MOS6502::RTS;
+    instruction[0x61] = &MOS6502::ADC_IND_X;
+    instruction[0x65] = &MOS6502::ADC_ZPG;
+    instruction[0x66] = &MOS6502::ROR_ZPG;
+    instruction[0x69] = &MOS6502::ADC_IMM;
+    instruction[0x6A] = &MOS6502::ROR_ACC;
+    instruction[0x6C] = &MOS6502::JMP_IND;
+    instruction[0x6D] = &MOS6502::ADC_ABS;
+    instruction[0x6E] = &MOS6502::ROR_ABS;
+    instruction[0x71] = &MOS6502::ADC_IND_Y;
+    instruction[0x75] = &MOS6502::ADC_ZPG_X;
+    instruction[0x76] = &MOS6502::ROR_ZPG_X;
+    instruction[0x79] = &MOS6502::ADC_ABS_Y;
+    instruction[0x7D] = &MOS6502::ADC_ABS_X;
+    instruction[0x7E] = &MOS6502::ROR_ABS_X;
+    instruction[0x81] = &MOS6502::STA_IND_X;
+    instruction[0x84] = &MOS6502::STY_ZPG;
+    instruction[0x85] = &MOS6502::STA_ZPG;
+    instruction[0x86] = &MOS6502::STX_ZPG;
+    instruction[0x88] = &MOS6502::DEY;
+    instruction[0x8A] = &MOS6502::TXA;
+    instruction[0x8C] = &MOS6502::STY_ABS;
+    instruction[0x8D] = &MOS6502::STA_ABS;
+    instruction[0x8E] = &MOS6502::STX_ABS;
+    instruction[0x91] = &MOS6502::STA_IND_Y;
+    instruction[0x94] = &MOS6502::STY_ZPG_X;   
+    instruction[0x95] = &MOS6502::STA_ZPG_X;
+    instruction[0x96] = &MOS6502::STX_ZPG_Y;
+    instruction[0x98] = &MOS6502::TYA;
+    instruction[0x99] = &MOS6502::STA_ABS_Y;
+    instruction[0x9A] = &MOS6502::TXS;
+    instruction[0x9D] = &MOS6502::STA_ABS_X;
+    instruction[0xA0] = &MOS6502::LDY_IMM;
+    instruction[0xA1] = &MOS6502::LDA_IND_X;
+    instruction[0xA2] = &MOS6502::LDX_IMM;
+    instruction[0xA4] = &MOS6502::LDY_ZPG;
+    instruction[0xA5] = &MOS6502::LDA_ZPG;
+    instruction[0xA6] = &MOS6502::LDX_ZPG;
+    instruction[0xA9] = &MOS6502::LDA_IMM;
+    instruction[0xA8] = &MOS6502::TAY;
+    instruction[0xAA] = &MOS6502::TAX;
+    instruction[0xAC] = &MOS6502::LDY_ABS;
+    instruction[0xAD] = &MOS6502::LDA_ABS;
+    instruction[0xAE] = &MOS6502::LDX_ABS;
+    instruction[0xB1] = &MOS6502::LDA_IND_Y;
+    instruction[0xB4] = &MOS6502::LDY_ZPG_X;
+    instruction[0xB5] = &MOS6502::LDA_ZPG_X;
+    instruction[0xB6] = &MOS6502::LDX_ZPG_Y;
+    instruction[0xB9] = &MOS6502::LDA_ABS_Y;
+    instruction[0xBA] = &MOS6502::TSX;
+    instruction[0xBC] = &MOS6502::LDY_ABS_X;
+    instruction[0xBD] = &MOS6502::LDA_ABS_X;
+    instruction[0xBE] = &MOS6502::LDX_ABS_Y;
+    instruction[0xBE] = &MOS6502::LDX_ABS_Y;
+    instruction[0xC6] = &MOS6502::DEC_ZPG;
+    instruction[0xC8] = &MOS6502::INY;
+    instruction[0xCA] = &MOS6502::DEX;
+    instruction[0xCD] = &MOS6502::CMP_ABS;
+    instruction[0xCE] = &MOS6502::DEC_ABS;
+    instruction[0xD6] = &MOS6502::DEC_ZPG_X;
+    instruction[0xDE] = &MOS6502::DEC_ABS_X;   
+    instruction[0xE1] = &MOS6502::SBC_IND_X;
+    instruction[0xE5] = &MOS6502::SBC_ZPG;
+    instruction[0xE6] = &MOS6502::INC_ZPG;
+    instruction[0xE8] = &MOS6502::INX;
+    instruction[0xE9] = &MOS6502::SBC_IMM;
+    instruction[0xED] = &MOS6502::SBC_ABS;
+    instruction[0xEE] = &MOS6502::INC_ABS;
+    instruction[0xF0] = &MOS6502::BEQ;
+    instruction[0xF1] = &MOS6502::SBC_IND_Y;
+    instruction[0xF5] = &MOS6502::SBC_ZPG_X;
+    instruction[0xF6] = &MOS6502::INC_ZPG_X;
+    instruction[0xF9] = &MOS6502::SBC_ABS_Y;
+    instruction[0xFD] = &MOS6502::SBC_ABS_X;
+    instruction[0xFE] = &MOS6502::INC_ABS_X;
+    
+}
+
+MOS6502::~MOS6502(){}
+
+void MOS6502::Init(NESMemorySystem *memory) {
+    //pc = 0;
+    pc = 0x4000;    /* AllSuite.65p*/
+    s = 0xFF;
+    p.C = 0;
+    p.Z = 0;
+    p.I = 0;
+    p.D = 0;
+    p.B = 0;
+    p.V = 0;
+    p.N = 0;
+    this->memory = memory;
+}
+
+void MOS6502::ExecuteInstruction() {
+    
+    unsigned char opcode;
+    
+    opcode = memory->Read(pc++);
+    
+    if (instruction[opcode] != NULL)
+        (this->*instruction[opcode])();
+    else
+        printf("INVALID INSTRUCTION: opcode = %X (pc = %X)\n",opcode,pc-1);
+};
+
+void MOS6502::LDA_IMM() { 
+    
+    ac = memory->Read(pc++);
+
+    //(ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    (ac == 0) ? p.Z = 1 : p.Z = 0;
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::LDX_IMM() { 
+    
+    x = memory->Read(pc++); 
+    
+    (x == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (x < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::LDY_IMM() { 
+    
+    y = memory->Read(pc++); 
+    
+    (y == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (y < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::LDA_ABS() {
+    
+    unsigned int address;           /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    
+    ac = memory->Read(address);     /* ac <- mem[address] */
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::LDX_ABS() {
+    
+    unsigned int address;           /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    
+    x = memory->Read(address);      /* x <- mem[address] */
+    
+    (x == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (x < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::LDY_ABS() {
+    
+    unsigned int address;           /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    
+    y = memory->Read(address);      /* y <- mem[address] */
+    
+    (y == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (y < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::LDA_ABS_X() {
+    
+    unsigned int address;       /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    address = address + (unsigned char)x;
+    ac = memory->Read(address);     /* ac <- mem[address] */
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::LDA_ABS_Y() {
+    
+    unsigned int address;       /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    address = address + (unsigned char)y;
+    ac = memory->Read(address);     /* ac <- mem[address] */
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::LDX_ABS_Y() {
+    
+    unsigned int address;           /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    address = address + (unsigned char)y;
+    x = memory->Read(address);      /* x <- mem[address] */
+    
+    (x == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (x < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::LDY_ABS_X() {
+    
+    unsigned int address;       /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    address = address + (unsigned char)x;
+    y = memory->Read(address);     /* y <- mem[address] */
+    
+    (y == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (y < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::LDA_ZPG() { 
+    
+    ac = memory->Read(memory->Read(pc++)); 
+
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::LDX_ZPG() { 
+    
+    x = memory->Read(memory->Read(pc++)); 
+   
+    (x == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (x < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::LDY_ZPG() { 
+    
+    y = memory->Read(memory->Read(pc++)); 
+    
+    (y == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (y < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::LDA_ZPG_X() { 
+
+    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    
+    ac = memory->Read(zeroPageAddress); 
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::LDY_ZPG_X() { 
+    
+    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    
+    y = memory->Read(zeroPageAddress); 
+    
+    (y == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (y < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::LDX_ZPG_Y() { 
+
+    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)y;
+    
+    x = memory->Read(zeroPageAddress); 
+    
+    (x == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (x < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+} 
+
+void MOS6502::LDA_IND_X() {
+    
+    unsigned char indAddress;   /* Zero page address */
+    unsigned int address;       /* Absolute address */
+    
+    indAddress = memory->Read(pc++) + (unsigned char)x;
+    
+    address = memory->Read(indAddress++);   /* Read the low byte address */
+    address = (memory->Read(indAddress++)<<8) | address; /* Read the high byte address and concatenates with the low byte  */
+
+    ac = memory->Read(address);     /* ac <- mem[mem[indAddress+x]] */
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::LDA_IND_Y() {
+    
+    unsigned char indAddress;   /* Zero page address */
+    unsigned int address;       /* Absolute address */
+    
+    indAddress = memory->Read(pc++);
+    
+    address = memory->Read(indAddress++);   /* Read the low byte address */
+    address = (memory->Read(indAddress++)<<8) | address; /* Read the high byte address and concatenates with the low byte  */
+    address = address + (unsigned char)y;
+    ac = memory->Read(address);              /* ac <- mem[mem[indAddress]+y] */
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::STA_ABS() {
+    
+    unsigned int address;           /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    
+    memory->Write(address,ac);      /* mem[address] <- ac */
+}
+
+void MOS6502::STX_ABS() {
+    
+    unsigned int address;           /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    
+    memory->Write(address,x);       /* mem[address] <- x */
+}
+
+void MOS6502::STY_ABS() {
+    
+    unsigned int address;           /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    
+    memory->Write(address,y);       /* mem[address] <- y */
+}
+
+void MOS6502::STA_ABS_X() {
+    
+    unsigned int address;           /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    address = address + (unsigned char)x;
+    memory->Write(address,ac);      /* mem[address] <- ac */
+}
+
+void MOS6502::STA_ABS_Y() {
+    
+    unsigned int address;           /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    address = address + (unsigned char)y;
+    memory->Write(address,ac);      /* mem[address] <- ac */
+}
+
+void MOS6502::STA_ZPG() { memory->Write(memory->Read(pc++),ac); }
+
+void MOS6502::STY_ZPG() { memory->Write(memory->Read(pc++),y); }
+
+void MOS6502::STX_ZPG() { memory->Write(memory->Read(pc++),x); } 
+
+void MOS6502::STA_ZPG_X() { 
+    
+    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    
+    memory->Write(zeroPageAddress,ac); 
+} 
+
+void MOS6502::STY_ZPG_X() { 
+    
+    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    
+    memory->Write(zeroPageAddress,y); 
+} 
+
+void MOS6502::STX_ZPG_Y() { 
+    
+    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)y;
+    
+    memory->Write(zeroPageAddress,x); 
+}
+
+void MOS6502::STA_IND_X() {
+    
+    unsigned char indAddress;   /* Zero page address */
+    unsigned int address;       /* Absolute address */
+    
+    indAddress = memory->Read(pc++) + (unsigned char)x;
+    
+    address = memory->Read(indAddress++);   /* Read the low byte address */
+    address = (memory->Read(indAddress++)<<8) | address; /* Read the high byte address and concatenates with the low byte  */
+
+    memory->Write(address,ac);              /* mem[mem[indAddress+x]] <- ac */
+}
+
+void MOS6502::STA_IND_Y() {
+    
+    unsigned char indAddress;   /* Zero page address */
+    unsigned int address;       /* Absolute address */
+    
+    indAddress = memory->Read(pc++);
+    
+    address = memory->Read(indAddress++);   /* Read the low byte address */
+    address = (memory->Read(indAddress++)<<8) | address; /* Read the high byte address and concatenates with the low byte  */
+    address = address + (unsigned char)y;
+    memory->Write(address,ac);              /* mem[mem[indAddress]+y] <- ac */
+}
+
+void MOS6502::AND_IMM() { 
+    
+    ac = ac & memory->Read(pc++);
+
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::ORA_IMM() { 
+    
+    ac = ac | memory->Read(pc++);
+
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::EOR_IMM() { 
+    
+    ac = ac ^ memory->Read(pc++);
+
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::AND_ZPG() { 
+    
+    ac = ac & memory->Read(memory->Read(pc++)); 
+
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::ORA_ZPG() { 
+    
+    ac = ac | memory->Read(memory->Read(pc++)); 
+
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::AND_ZPG_X() { 
+
+    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    
+    ac = ac & memory->Read(zeroPageAddress); 
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::ORA_ZPG_X() { 
+
+    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    
+    ac = ac | memory->Read(zeroPageAddress); 
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::EOR_ZPG_X() { 
+
+    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    
+    ac = ac ^ memory->Read(zeroPageAddress); 
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::EOR_ABS() {
+    
+    unsigned int address;           /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    
+    ac = ac ^ memory->Read(address);     /* ac <- mem[address] */
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::AND_ABS() {
+    
+    unsigned int address;           /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    
+    ac = ac & memory->Read(address);     /* ac <- mem[address] */
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::ORA_ABS() {
+    
+    unsigned int address;           /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    
+    ac = ac | memory->Read(address);     /* ac <- mem[address] */
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::EOR_ZPG() { 
+    
+    ac = ac ^ memory->Read(memory->Read(pc++)); 
+
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::AND_ABS_X() {
+    
+    unsigned int address;       /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    address = address + (unsigned char)x;
+    ac = ac & memory->Read(address);     /* ac <- mem[address] */
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::ORA_ABS_X() {
+    
+    unsigned int address;       /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    address = address + (unsigned char)x;
+    ac = ac | memory->Read(address);     /* ac <- mem[address] */
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::EOR_ABS_X() {
+    
+    unsigned int address;       /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    address = address + (unsigned char)x;
+    ac = ac ^ memory->Read(address);     /* ac <- mem[address] */
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::AND_ABS_Y() {
+    
+    unsigned int address;       /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    address = address + (unsigned char)y;
+    ac = ac & memory->Read(address);     /* ac <- mem[address] */
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::ORA_ABS_Y() {
+    
+    unsigned int address;       /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    address = address + (unsigned char)y;
+    ac = ac | memory->Read(address);     /* ac <- mem[address] */
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::EOR_ABS_Y() {
+    
+    unsigned int address;       /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    address = address + (unsigned char)y;
+    ac = ac ^ memory->Read(address);     /* ac <- mem[address] */
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::AND_IND_X() {
+    
+    unsigned char indAddress;   /* Zero page address */
+    unsigned int address;       /* Absolute address */
+    
+    indAddress = memory->Read(pc++) + (unsigned char)x;
+    
+    address = memory->Read(indAddress++);   /* Read the low byte address */
+    address = (memory->Read(indAddress++)<<8) | address; /* Read the high byte address and concatenates with the low byte  */
+
+    ac = ac & memory->Read(address);     /* ac <- mem[mem[indAddress+x]] */
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::ORA_IND_X() {
+    
+    unsigned char indAddress;   /* Zero page address */
+    unsigned int address;       /* Absolute address */
+    
+    indAddress = memory->Read(pc++) + (unsigned char)x;
+    
+    address = memory->Read(indAddress++);   /* Read the low byte address */
+    address = (memory->Read(indAddress++)<<8) | address; /* Read the high byte address and concatenates with the low byte  */
+
+    ac = ac | memory->Read(address);     /* ac <- mem[mem[indAddress+x]] */
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::EOR_IND_X() {
+    
+    unsigned char indAddress;   /* Zero page address */
+    unsigned int address;       /* Absolute address */
+    
+    indAddress = memory->Read(pc++) + (unsigned char)x;
+    
+    address = memory->Read(indAddress++);   /* Read the low byte address */
+    address = (memory->Read(indAddress++)<<8) | address; /* Read the high byte address and concatenates with the low byte  */
+
+    ac = ac ^ memory->Read(address);     /* ac <- mem[mem[indAddress+x]] */
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::AND_IND_Y() {
+    
+    unsigned char indAddress;   /* Zero page address */
+    unsigned int address;       /* Absolute address */
+    
+    indAddress = memory->Read(pc++);
+    
+    address = memory->Read(indAddress++);   /* Read the low byte address */
+    address = (memory->Read(indAddress++)<<8) | address; /* Read the high byte address and concatenates with the low byte  */
+    address = address + (unsigned char)y;    
+    ac = ac & memory->Read(address);              /* ac <- mem[mem[indAddress]+y] */
+        
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::ORA_IND_Y() {
+    
+    unsigned char indAddress;   /* Zero page address */
+    unsigned int address;       /* Absolute address */
+    
+    indAddress = memory->Read(pc++);
+    
+    address = memory->Read(indAddress++);   /* Read the low byte address */
+    address = (memory->Read(indAddress++)<<8) | address; /* Read the high byte address and concatenates with the low byte  */
+    address = address + (unsigned char)y;
+    ac = ac | memory->Read(address);              /* ac <- mem[mem[indAddress]+y] */
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::EOR_IND_Y() {
+    
+    unsigned char indAddress;   /* Zero page address */
+    unsigned int address;       /* Absolute address */
+    
+    indAddress = memory->Read(pc++);
+    
+    address = memory->Read(indAddress++);   /* Read the low byte address */
+    address = (memory->Read(indAddress++)<<8) | address; /* Read the high byte address and concatenates with the low byte  */
+    address = address + (unsigned char)y;
+    ac = ac ^ memory->Read(address);              /* ac <- mem[mem[indAddress]+y] */
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::INC_ZPG() { 
+    
+    char data;
+    unsigned char zeroPageAddress = memory->Read(pc++);
+    
+    data = memory->Read(zeroPageAddress);
+    data++;
+    memory->Write(zeroPageAddress,data);
+    
+    (data == 0) ? p.Z = 1 : p.Z = 0;       /* Set/Reset Zero flag */
+    
+    (data < 0) ? p.N = 1 : p.N = 0;        /* Set/Reset Negative flag */
+}
+
+void MOS6502::INC_ZPG_X() { 
+
+    char data;  
+    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    
+    data = memory->Read(zeroPageAddress); 
+    data++;
+    memory->Write(zeroPageAddress,data);
+    
+    (data == 0) ? p.Z = 1 : p.Z = 0;       /* Set/Reset Zero flag */
+    
+    (data < 0) ? p.N = 1 : p.N = 0;        /* Set/Reset Negative flag */
+}
+
+void MOS6502::INC_ABS() {
+    
+    char data;
+    unsigned int address;           /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    
+    data = memory->Read(address);     /* data <- mem[address] */
+    data++;
+    memory->Write(address,data);
+    
+    (data == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (data < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::INC_ABS_X() {
+    
+    char data;
+    unsigned int address;       /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    address = address + (unsigned char)x;
+    data = memory->Read(address);     /* data <- mem[address] */
+    data++;
+    memory->Write(address,data);
+    
+    (data == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (data < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::DEC_ZPG() { 
+    
+    char data;
+    unsigned char zeroPageAddress = memory->Read(pc++);
+    
+    data = memory->Read(zeroPageAddress);
+    data--;
+    memory->Write(zeroPageAddress,data);
+    
+    (data == 0) ? p.Z = 1 : p.Z = 0;       /* Set/Reset Zero flag */
+    
+    (data < 0) ? p.N = 1 : p.N = 0;        /* Set/Reset Negative flag */
+}
+
+void MOS6502::DEC_ZPG_X() { 
+
+    char data;  
+    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    
+    data = memory->Read(zeroPageAddress); 
+    data--;
+    memory->Write(zeroPageAddress,data);
+    
+    (data == 0) ? p.Z = 1 : p.Z = 0;       /* Set/Reset Zero flag */
+    
+    (data < 0) ? p.N = 1 : p.N = 0;        /* Set/Reset Negative flag */
+}
+
+void MOS6502::DEC_ABS() {
+    
+    char data;
+    unsigned int address;           /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    
+    data = memory->Read(address);     /* data <- mem[address] */
+    data--;
+    memory->Write(address,data);
+    
+    (data == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (data < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::DEC_ABS_X() {
+    
+    char data;
+    unsigned int address;       /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    address = address + (unsigned char)x;
+    data = memory->Read(address);     /* data <- mem[address] */
+    data--;
+    memory->Write(address,data);
+    
+    (data == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (data < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+}
+
+void MOS6502::LSR_ACC() {
+           
+    p.C = BIT_CHECK(ac,0);     /* Carry flag = ac[0] */
+    
+    ac = (unsigned char)ac >> 1;            /* Result must be positive */
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    p.N = 0;   /* Clear negative flag */
+ }
+
+void MOS6502::ASL_ACC() {
+            
+    p.C = BIT_CHECK(ac,7);     /* Carry flag = ac[7] */
+    
+    ac = ac << 1;
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;    /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;     /* Set/Reset Negative flag */
+}
+
+void MOS6502::ASL_ZPG() { 
+    
+    char data;
+    unsigned char zeroPageAddress = memory->Read(pc++);
+    
+    data = memory->Read(zeroPageAddress);
+    
+    p.C = BIT_CHECK(data,7);     /* Carry flag = data[7] */ 
+    
+    data = data << 1;
+    memory->Write(zeroPageAddress,data);
+    
+    (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    (data < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+}
+
+void MOS6502::LSR_ZPG() { 
+    
+    unsigned char data;     /* Result is always positive */
+    unsigned char zeroPageAddress = memory->Read(pc++);
+    
+    data = memory->Read(zeroPageAddress);
+    
+    p.C = BIT_CHECK(data,0);     /* Carry flag = data[0] */ 
+    
+    data = data >> 1;
+    memory->Write(zeroPageAddress,data);
+    
+    (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    p.N = 0;   /* Clear negative flag */
+}
+
+void MOS6502::ASL_ZPG_X() { 
+
+    char data;  
+    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    
+    data = memory->Read(zeroPageAddress); 
+    
+    p.C = BIT_CHECK(data,7);     /* Carry flag = data[7] */ 
+    
+    data = data << 1;
+    memory->Write(zeroPageAddress,data);
+    
+    (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    (data < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+}
+
+void MOS6502::LSR_ZPG_X() { 
+
+    unsigned char data;     /* Result is always positive */
+    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    
+    data = memory->Read(zeroPageAddress);
+    
+    p.C = BIT_CHECK(data,0);     /* Carry flag = data[0] */ 
+    
+    data = data >> 1;
+    memory->Write(zeroPageAddress,data);
+    
+    (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    p.N = 0;   /* Clear negative flag */
+}
+
+void MOS6502::LSR_ABS_X() {
+    
+    unsigned char data;         /* Result is always positive */
+    unsigned int address;       /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    address = address + (unsigned char)x;
+    data = memory->Read(address);     /* data <- mem[address] */
+    
+    p.C = BIT_CHECK(data,0);     /* Carry flag = data[0] */ 
+    
+    data = data >> 1;
+    memory->Write(address,data);
+    
+    (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    p.N = 0;   /* Clear negative flag */
+}
+
+void MOS6502::ASL_ABS_X() {
+    
+    char data;
+    unsigned int address;       /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    address = address + (unsigned char)x;
+    data = memory->Read(address);     /* data <- mem[address] */
+    
+    p.C = BIT_CHECK(data,7);     /* Carry flag = data[7] */ 
+    
+    data = data << 1;
+    memory->Write(address,data);
+    
+    (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    (data < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+}
+
+void MOS6502::LSR_ABS() {
+    
+    unsigned char data;             /* Result is always positive */
+    unsigned int address;           /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    
+    data = memory->Read(address);     /* data <- mem[address] */
+    
+    p.C = BIT_CHECK(data,0);     /* Carry flag = data[0] */ 
+    
+    data = data >> 1;
+    memory->Write(address,data);
+    
+    (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    p.N = 0;   /* Clear negative flag */
+}
+
+void MOS6502::ASL_ABS() {
+    
+    char data;
+    unsigned int address;           /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    
+    data = memory->Read(address);     /* data <- mem[address] */
+    
+    p.C = BIT_CHECK(data,7);     /* Carry flag = data[7] */ 
+    
+    data = data << 1;
+    memory->Write(address,data);
+    
+    (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    (data < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+}
+
+void MOS6502::ROL_ACC() {
+            
+    char carry = p.C;
+    
+    p.C = BIT_CHECK(ac,7);         /* Carry flag = ac[7] */
+    
+    ac = (ac << 1) | carry;
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;    /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;     /* Set/Reset Negative flag */
+}
+
+void MOS6502::ROR_ACC() {
+            
+    char carry = p.C;
+    
+    p.C = BIT_CHECK(ac,0);         /* Carry flag = ac[0] */
+    
+    ac = (carry << 7) | (ac >> 1);
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;    /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;     /* Set/Reset Negative flag */
+}
+
+void MOS6502::ROL_ZPG() { 
+    
+    char data;
+    unsigned char zeroPageAddress = memory->Read(pc++);
+    char carry = p.C;
+    
+    data = memory->Read(zeroPageAddress);
+    
+    p.C = BIT_CHECK(data,7);         /* Carry flag = data[7] */
+    
+    data = (data << 1) | carry;
+    
+    memory->Write(zeroPageAddress,data);    
+    
+    (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    (data < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+}
+
+void MOS6502::ROR_ZPG() { 
+    
+    unsigned char data;             /* Result is always positive */
+    unsigned char zeroPageAddress = memory->Read(pc++);
+    char carry = p.C;
+    
+    data = memory->Read(zeroPageAddress);
+    
+    p.C = BIT_CHECK(data,0);         /* Carry flag = data[0] */
+    
+    data = (carry << 7) | (data >> 1);
+    
+    memory->Write(zeroPageAddress,data);    
+    
+    (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    (data < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+}
+
+void MOS6502::ROL_ZPG_X() { 
+
+    char data;  
+    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    char carry = p.C;
+    
+    data = memory->Read(zeroPageAddress);
+    
+    p.C = BIT_CHECK(data,7);         /* Carry flag = data[7] */
+    
+    data = (data << 1) | carry;
+    
+    memory->Write(zeroPageAddress,data);    
+    
+    (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    (data < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+}
+
+void MOS6502::ROR_ZPG_X() { 
+    
+    unsigned char data;             /* Result is always positive */
+    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    char carry = p.C;
+    
+    data = memory->Read(zeroPageAddress);
+    
+    p.C = BIT_CHECK(data,0);         /* Carry flag = data[0] */
+    
+    data = (carry << 7) | (data >> 1);
+    
+    memory->Write(zeroPageAddress,data);    
+    
+    (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    (data < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+}
+
+void MOS6502::ROL_ABS() {
+    
+    char data;
+    unsigned int address;           /* Absolute address */
+    char carry = p.C;
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    
+    data = memory->Read(address);     /* data <- mem[address] */
+    
+    p.C = BIT_CHECK(data,7);     /* Carry flag = data[7] */ 
+    
+    data = (data << 1) | carry;
+    
+    memory->Write(address,data);
+    
+    (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    (data < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+}
+
+void MOS6502::ROR_ABS() {
+    
+    unsigned char data;             /* Result is always positive */
+    unsigned int address;           /* Absolute address */
+    char carry = p.C;
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    
+    data = memory->Read(address);     /* data <- mem[address] */
+    
+    p.C = BIT_CHECK(data,0);         /* Carry flag = data[0] */
+    
+    data = (carry << 7) | (data >> 1);
+    
+    memory->Write(address,data);
+    
+    (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    p.N = 0;   /* Clear negative flag */
+}
+
+void MOS6502::ROL_ABS_X() {
+    
+    char data;
+    unsigned int address;           /* Absolute address */
+    char carry = p.C;
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    address = address + (unsigned char)x;
+    
+    data = memory->Read(address);     /* data <- mem[address] */
+    
+    p.C = BIT_CHECK(data,7);     /* Carry flag = data[7] */ 
+    
+    data = (data << 1) | carry;
+    
+    memory->Write(address,data);
+    
+    (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    (data < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+}
+
+void MOS6502::ROR_ABS_X() {
+    
+    unsigned char data;             /* Result is always positive */
+    unsigned int address;           /* Absolute address */
+    char carry = p.C;
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    address = address + (unsigned char)x;
+    
+    data = memory->Read(address);     /* data <- mem[address] */
+    
+    p.C = BIT_CHECK(data,0);         /* Carry flag = data[0] */
+    
+    data = (carry << 7) | (data >> 1);
+    
+    memory->Write(address,data);
+    
+    (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    p.N = 0;   /* Clear negative flag */
+}
+
+void MOS6502::CMP_ABS() {
+    
+    unsigned int address;                       /* Absolute address */
+    char result;
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    
+    result = ac - (char)memory->Read(address);        /* ac - mem[address] */
+    
+    
+    /* Status register bits: N V - B D I Z C */
+    
+    (result == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
+    
+    (result < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+    
+    (result >= 0) ? p.C = 1 : p.C = 0;     /* Set/Reset Carry flag */  
+}
+
+void MOS6502::JMP_ABS() {
+    
+    unsigned int address;           /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    
+    pc = address;                   
+}
+
+void MOS6502::JMP_IND() {
+    
+    unsigned int indAddress;            /* Indirect address */
+    unsigned int address;               /* Absolute address */
+    
+    /* Read the indirect address */
+    indAddress = memory->Read(pc++);   /* Read the low byte address */
+    indAddress = (memory->Read(pc++)<<8) | indAddress;    /* Read the high byte address */
+        
+    /* Read the absolute address */
+    address = memory->Read(indAddress++);   /* Read the low byte address */
+    address = (memory->Read(indAddress++)<<8) | address;    /* Read the high byte address */
+    
+    pc = address;  
+}
+
+void MOS6502::JSR() {
+    
+    unsigned int address;           /* Absolute address */
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    
+    memory->Write(s--,(pc & 0xFF00)>>8);    /* Store the return address high byte */
+    memory->Write(s--,(pc & 0xFF));         /* Store the return address low byte */
+    
+    pc = address;                   
+}
+
+void MOS6502::RTS() {
+    
+    unsigned int address;           /* Absolute address */
+    
+    address = memory->Read(++s);   /* Read the low byte address */
+    address = (memory->Read(++s)<<8) | address;    /* Read the high byte address */
+    
+    pc = address;
+}
+
+void MOS6502::TAX() {
+    
+    x = ac;
+    
+    (x < 0) ? p.N = 1 : p.N = 0;        /* Set/Reset Negative flag */
+    
+    (x == 0) ? p.Z = 1: p.Z = 0;        /* Set/Reset Zero flag */
+}
+
+void MOS6502::TAY() {
+    
+    y = ac;
+    
+    (y < 0) ? p.N = 1 : p.N = 0;        /* Set/Reset Negative flag */
+    
+    (y == 0) ? p.Z = 1: p.Z = 0;        /* Set/Reset Zero flag */
+}
+
+void MOS6502::TXA() {
+    
+    ac = x;
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;        /* Set/Reset Negative flag */
+    
+    (ac == 0) ? p.Z = 1: p.Z = 0;        /* Set/Reset Zero flag */
+}
+
+void MOS6502::TYA() {
+    
+    ac = y;
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;        /* Set/Reset Negative flag */
+    
+    (ac == 0) ? p.Z = 1: p.Z = 0;        /* Set/Reset Zero flag */
+}
+
+void MOS6502::DEX() {
+    
+    x--;
+    
+    (x < 0) ? p.N = 1 : p.N = 0;        /* Set/Reset Negative flag */
+    
+    (x == 0) ? p.Z = 1: p.Z = 0;        /* Set/Reset Zero flag */
+}
+
+void MOS6502::DEY() {
+    
+    y--;
+    
+    (y < 0) ? p.N = 1 : p.N = 0;        /* Set/Reset Negative flag */
+    
+    (y == 0) ? p.Z = 1: p.Z = 0;        /* Set/Reset Zero flag */
+}
+
+void MOS6502::INX() {
+    
+    x++;
+    
+    (x < 0) ? p.N = 1 : p.N = 0;        /* Set/Reset Negative flag */
+    
+    (x == 0) ? p.Z = 1: p.Z = 0;        /* Set/Reset Zero flag */
+}
+
+void MOS6502::INY() {
+    
+    y++;
+    
+    (y < 0) ? p.N = 1 : p.N = 0;        /* Set/Reset Negative flag */
+    
+    (y == 0) ? p.Z = 1: p.Z = 0;        /* Set/Reset Zero flag */
+}
+
+void MOS6502::TXS() { s = x; }
+
+void MOS6502::TSX() {
+    
+    x = s;
+    
+    (x < 0) ? p.N = 1 : p.N = 0;        /* Set/Reset Negative flag */
+    
+    (x == 0) ? p.Z = 1: p.Z = 0;        /* Set/Reset Zero flag */
+}
+
+void MOS6502::ADC_IMM() { 
+    
+    char data = memory->Read(pc++);
+    int resultSigned;                   /* Used to detect overflow */
+    unsigned int resultUnsigned;        /* Used to detect carry */
+    
+    resultUnsigned = (unsigned char)ac + (unsigned char)data + p.C;
+    resultSigned = ac + data + p.C;
+    
+     /* Overflow detection (2's complement arithmetic) */
+    (resultSigned > 127 || resultSigned < -128) ? p.V = 1 : p.V = 0;   
+
+    /* Carry detection (same as overflow in unsigned arithmetic) */     
+    (resultUnsigned > 255) ? p.C = 1 : p.C = 0;
+
+    ac = (char)resultSigned;
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+}
+
+void MOS6502::SBC_IMM() { 
+    
+    char data = ~memory->Read(pc++);    /* Complement */
+    int resultSigned;                   /* Used to detect overflow */
+    unsigned int resultUnsigned;        /* Used to detect carry */
+    
+    resultUnsigned = (unsigned char)ac + (unsigned char)data + p.C;
+    resultSigned = ac + data + p.C;   
+    
+     /* Overflow detection (2's complement arithmetic) */
+    (resultSigned > 127 || resultSigned < -128) ? p.V = 1 : p.V = 0;   
+
+    /* Carry detection (same as overflow in unsigned arithmetic) */     
+    (resultUnsigned > 255) ? p.C = 1 : p.C = 0;
+
+    ac = (char)resultSigned;
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+}
+
+void MOS6502::ADC_ZPG_X() { 
+    
+    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    char data = memory->Read(zeroPageAddress);
+    int resultSigned;                   /* Used to detect overflow */
+    unsigned int resultUnsigned;        /* Used to detect carry */
+    
+    resultUnsigned = (unsigned char)ac + (unsigned char)data + p.C;
+    resultSigned = ac + data + p.C;
+   
+     /* Overflow detection (2's complement arithmetic) */
+    (resultSigned > 127 || resultSigned < -128) ? p.V = 1 : p.V = 0;   
+
+    /* Carry detection (same as overflow in unsigned arithmetic) */     
+    (resultUnsigned > 255) ? p.C = 1 : p.C = 0;
+
+    ac = (char)resultSigned;
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+}
+
+void MOS6502::SBC_ZPG_X() { 
+    
+    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    char data = ~memory->Read(zeroPageAddress);     /* Complement */
+    int resultSigned;                               /* Used to detect overflow */
+    unsigned int resultUnsigned;                    /* Used to detect carry */
+    
+    resultUnsigned = (unsigned char)ac + (unsigned char)data + p.C;
+    resultSigned = ac + data + p.C;
+        
+     /* Overflow detection (2's complement arithmetic) */
+    (resultSigned > 127 || resultSigned < -128) ? p.V = 1 : p.V = 0;   
+
+    /* Carry detection (same as overflow in unsigned arithmetic) */     
+    (resultUnsigned > 255) ? p.C = 1 : p.C = 0;
+
+    ac = (char)resultSigned;
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+}
+
+void MOS6502::ADC_ZPG() { 
+    
+    char data = memory->Read(memory->Read(pc++));
+    int resultSigned;                   /* Used to detect overflow */
+    unsigned int resultUnsigned;        /* Used to detect carry */
+    
+    resultUnsigned = (unsigned char)ac + (unsigned char)data + p.C;
+    resultSigned = ac + data + p.C;
+   
+     /* Overflow detection (2's complement arithmetic) */
+    (resultSigned > 127 || resultSigned < -128) ? p.V = 1 : p.V = 0;   
+
+    /* Carry detection (same as overflow in unsigned arithmetic) */     
+    (resultUnsigned > 255) ? p.C = 1 : p.C = 0;
+
+    ac = (char)resultSigned;
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+}
+
+void MOS6502::SBC_ZPG() { 
+    
+    char data = ~memory->Read(memory->Read(pc++));  /* Complement */
+    int resultSigned;                   /* Used to detect overflow */
+    unsigned int resultUnsigned;        /* Used to detect carry */
+    
+    resultUnsigned = (unsigned char)ac + (unsigned char)data + p.C;
+    resultSigned = ac + data + p.C;
+   
+     /* Overflow detection (2's complement arithmetic) */
+    (resultSigned > 127 || resultSigned < -128) ? p.V = 1 : p.V = 0;   
+
+    /* Carry detection (same as overflow in unsigned arithmetic) */     
+    (resultUnsigned > 255) ? p.C = 1 : p.C = 0;
+
+    ac = (char)resultSigned;
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+}
+
+void MOS6502::ADC_ABS() { 
+    
+    unsigned int address;               /* Absolute address */
+    int resultSigned;                   /* Used to detect overflow */
+    unsigned int resultUnsigned;        /* Used to detect carry */
+    char data;
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    
+    data = memory->Read(address);    
+    
+    resultUnsigned = (unsigned char)ac + (unsigned char)data + p.C;
+    resultSigned = ac + data + p.C;
+   
+     /* Overflow detection (2's complement arithmetic) */
+    (resultSigned > 127 || resultSigned < -128) ? p.V = 1 : p.V = 0;   
+
+    /* Carry detection (same as overflow in unsigned arithmetic) */     
+    (resultUnsigned > 255) ? p.C = 1 : p.C = 0;
+
+    ac = (char)resultSigned;
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+}
+
+void MOS6502::SBC_ABS() { 
+    
+    unsigned int address;               /* Absolute address */
+    int resultSigned;                   /* Used to detect overflow */
+    unsigned int resultUnsigned;        /* Used to detect carry */
+    char data;
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    
+    data = ~memory->Read(address);      /* Complement */    
+    
+    resultUnsigned = (unsigned char)ac + (unsigned char)data + p.C;
+    resultSigned = ac + data + p.C;
+   
+     /* Overflow detection (2's complement arithmetic) */
+    (resultSigned > 127 || resultSigned < -128) ? p.V = 1 : p.V = 0;   
+
+    /* Carry detection (same as overflow in unsigned arithmetic) */     
+    (resultUnsigned > 255) ? p.C = 1 : p.C = 0;
+
+    ac = (char)resultSigned;
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+}
+
+void MOS6502::ADC_ABS_X() { 
+    
+    unsigned int address;               /* Absolute address */
+    int resultSigned;                   /* Used to detect overflow */
+    unsigned int resultUnsigned;        /* Used to detect carry */
+    char data;
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    address = address + (unsigned char)x;
+    
+    data = memory->Read(address);    
+    
+    resultUnsigned = (unsigned char)ac + (unsigned char)data + p.C;
+    resultSigned = ac + data + p.C;
+   
+     /* Overflow detection (2's complement arithmetic) */
+    (resultSigned > 127 || resultSigned < -128) ? p.V = 1 : p.V = 0;   
+
+    /* Carry detection (same as overflow in unsigned arithmetic) */     
+    (resultUnsigned > 255) ? p.C = 1 : p.C = 0;
+
+    ac = (char)resultSigned;
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+}
+
+void MOS6502::SBC_ABS_X() { 
+    
+    unsigned int address;               /* Absolute address */
+    int resultSigned;                   /* Used to detect overflow */
+    unsigned int resultUnsigned;        /* Used to detect carry */
+    char data;
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    address = address + (unsigned char)x;
+    
+    data = ~memory->Read(address);      /* Complement */    
+    
+    resultUnsigned = (unsigned char)ac + (unsigned char)data + p.C;
+    resultSigned = ac + data + p.C;
+   
+     /* Overflow detection (2's complement arithmetic) */
+    (resultSigned > 127 || resultSigned < -128) ? p.V = 1 : p.V = 0;   
+
+    /* Carry detection (same as overflow in unsigned arithmetic) */     
+    (resultUnsigned > 255) ? p.C = 1 : p.C = 0;
+
+    ac = (char)resultSigned;
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+}
+
+void MOS6502::ADC_ABS_Y() { 
+    
+    unsigned int address;               /* Absolute address */
+    int resultSigned;                   /* Used to detect overflow */
+    unsigned int resultUnsigned;        /* Used to detect carry */
+    char data;
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    address = address + (unsigned char)y;
+    
+    data = memory->Read(address);    
+    
+    resultUnsigned = (unsigned char)ac + (unsigned char)data + p.C;
+    resultSigned = ac + data + p.C;
+   
+     /* Overflow detection (2's complement arithmetic) */
+    (resultSigned > 127 || resultSigned < -128) ? p.V = 1 : p.V = 0;   
+
+    /* Carry detection (same as overflow in unsigned arithmetic) */     
+    (resultUnsigned > 255) ? p.C = 1 : p.C = 0;
+
+    ac = (char)resultSigned;
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+}
+
+void MOS6502::SBC_ABS_Y() { 
+    
+    unsigned int address;               /* Absolute address */
+    int resultSigned;                   /* Used to detect overflow */
+    unsigned int resultUnsigned;        /* Used to detect carry */
+    char data;
+    
+    address = memory->Read(pc++);   /* Read the low byte address */
+    address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
+    address = address + (unsigned char)y;
+    
+    data = ~memory->Read(address);      /* Complement */    
+    
+    resultUnsigned = (unsigned char)ac + (unsigned char)data + p.C;
+    resultSigned = ac + data + p.C;
+   
+     /* Overflow detection (2's complement arithmetic) */
+    (resultSigned > 127 || resultSigned < -128) ? p.V = 1 : p.V = 0;   
+
+    /* Carry detection (same as overflow in unsigned arithmetic) */     
+    (resultUnsigned > 255) ? p.C = 1 : p.C = 0;
+
+    ac = (char)resultSigned;
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+}
+
+void MOS6502::ADC_IND_X() { 
+    
+    unsigned char indAddress;           /* Zero page address */
+    unsigned int address;               /* Absolute address */
+    int resultSigned;                   /* Used to detect overflow */
+    unsigned int resultUnsigned;        /* Used to detect carry */
+    char data;
+    
+    indAddress = memory->Read(pc++) + (unsigned char)x;
+    
+    address = memory->Read(indAddress++);   /* Read the low byte address */
+    address = (memory->Read(indAddress++)<<8) | address; /* Read the high byte address and concatenates with the low byte  */
+    
+    data = memory->Read(address);    
+    
+    resultUnsigned = (unsigned char)ac + (unsigned char)data + p.C;
+    resultSigned = ac + data + p.C;
+   
+     /* Overflow detection (2's complement arithmetic) */
+    (resultSigned > 127 || resultSigned < -128) ? p.V = 1 : p.V = 0;   
+
+    /* Carry detection (same as overflow in unsigned arithmetic) */     
+    (resultUnsigned > 255) ? p.C = 1 : p.C = 0;
+
+    ac = (char)resultSigned;
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+}
+
+void MOS6502::SBC_IND_X() { 
+    
+    unsigned char indAddress;           /* Zero page address */
+    unsigned int address;               /* Absolute address */
+    int resultSigned;                   /* Used to detect overflow */
+    unsigned int resultUnsigned;        /* Used to detect carry */
+    char data;
+    
+    indAddress = memory->Read(pc++) + (unsigned char)x;
+    
+    address = memory->Read(indAddress++);   /* Read the low byte address */
+    address = (memory->Read(indAddress++)<<8) | address; /* Read the high byte address and concatenates with the low byte  */
+    
+    data = ~memory->Read(address);          /* Complement */   
+    
+    resultUnsigned = (unsigned char)ac + (unsigned char)data + p.C;
+    resultSigned = ac + data + p.C;
+   
+     /* Overflow detection (2's complement arithmetic) */
+    (resultSigned > 127 || resultSigned < -128) ? p.V = 1 : p.V = 0;   
+
+    /* Carry detection (same as overflow in unsigned arithmetic) */     
+    (resultUnsigned > 255) ? p.C = 1 : p.C = 0;
+
+    ac = (char)resultSigned;
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+}
+
+void MOS6502::ADC_IND_Y() { 
+    
+    unsigned char indAddress;           /* Zero page address */
+    unsigned int address;               /* Absolute address */
+    int resultSigned;                   /* Used to detect overflow */
+    unsigned int resultUnsigned;        /* Used to detect carry */
+    char data;
+    
+    indAddress = memory->Read(pc++);
+    
+    address = memory->Read(indAddress++);   /* Read the low byte address */
+    address = (memory->Read(indAddress++)<<8) | address; /* Read the high byte address and concatenates with the low byte  */
+    address = address + (unsigned char)y;
+    
+    data = memory->Read(address);    
+    
+    resultUnsigned = (unsigned char)ac + (unsigned char)data + p.C;
+    resultSigned = ac + data + p.C;
+   
+     /* Overflow detection (2's complement arithmetic) */
+    (resultSigned > 127 || resultSigned < -128) ? p.V = 1 : p.V = 0;   
+
+    /* Carry detection (same as overflow in unsigned arithmetic) */     
+    (resultUnsigned > 255) ? p.C = 1 : p.C = 0;
+
+    ac = (char)resultSigned;
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+}
+
+void MOS6502::SBC_IND_Y() { 
+    
+    unsigned char indAddress;           /* Zero page address */
+    unsigned int address;               /* Absolute address */
+    int resultSigned;                   /* Used to detect overflow */
+    unsigned int resultUnsigned;        /* Used to detect carry */
+    char data;
+    
+    indAddress = memory->Read(pc++);
+    
+    address = memory->Read(indAddress++);   /* Read the low byte address */
+    address = (memory->Read(indAddress++)<<8) | address; /* Read the high byte address and concatenates with the low byte  */
+    address = address + (unsigned char)y;
+    
+    data = ~memory->Read(address);          /* Complement */    
+    
+    resultUnsigned = (unsigned char)ac + (unsigned char)data + p.C;
+    resultSigned = ac + data + p.C;
+   
+     /* Overflow detection (2's complement arithmetic) */
+    (resultSigned > 127 || resultSigned < -128) ? p.V = 1 : p.V = 0;   
+
+    /* Carry detection (same as overflow in unsigned arithmetic) */     
+    (resultUnsigned > 255) ? p.C = 1 : p.C = 0;
+
+    ac = (char)resultSigned;
+    
+    (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
+    
+    (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+}
+
+void MOS6502::BEQ() {
+    
+    char offset = memory->Read(pc++);
+
+    pc = pc + offset;
+}
