@@ -79,5 +79,77 @@ int main() {
     memorySystem.Print(0x30,1);
     cpu.PrintRegs();
     
+    // test07: expected result: $15 = 0x7F
+    // Z = ; C = 
+    for(int i=0; i<57; i++)
+        cpu.ExecuteInstruction();
+    
+    memorySystem.Print(0x15,1);
+    cpu.PrintRegs();
+    
+    // test08: expected result: $42 = 0xA5
+    // Z = ; C = 
+    for(int i=0; i<32; i++)
+        cpu.ExecuteInstruction();
+    
+    memorySystem.Print(0x42,1);
+    cpu.PrintRegs();
+    
+    // test09: expected result: $80 = 0x1F
+    // Z = ; C = 
+    for(int i=0; i<42; i++)
+        cpu.ExecuteInstruction();
+    
+    memorySystem.Print(0x80,1);
+    cpu.PrintRegs();
+    
+    // test10: expected result: $30 = 0xCE
+    // Z = ; C = 
+    for(int i=0; i<17; i++)
+        cpu.ExecuteInstruction();
+    
+    memorySystem.Print(0x30,1);
+    cpu.PrintRegs();
+    
+    // test11: expected result: $30 = 0x29
+    // Z = ; C = 
+    for(int i=0; i<15; i++)
+        cpu.ExecuteInstruction();
+    
+    memorySystem.Print(0x30,1);
+    cpu.PrintRegs();
+    
+    // test12: expected result: $33 = 0x42
+    // Z = ; C = 
+    for(int i=0; i<18; i++)
+        cpu.ExecuteInstruction();
+    
+    memorySystem.Print(0x33,1);
+    cpu.PrintRegs();
+    
+    // test13: expected result: $21 = 0x6C (simulator) $21 = 0x0C (ours)
+    // Z = ; C = 
+    for(int i=0; i<15; i++)
+        cpu.ExecuteInstruction();
+    
+    memorySystem.Print(0x21,1);
+    cpu.PrintRegs();
+    
+    // test14: expected result: $60 = 0x42
+    // Z = ; C = 
+    for(int i=0; i<6; i++)
+        cpu.ExecuteInstruction();
+    
+    memorySystem.Print(0x60,1);
+    cpu.PrintRegs();
+    
+    // suiteafinal: expected result: $0210 = FF
+    // Z = ; C = 
+    for(int i=0; i<666; i++)
+        cpu.ExecuteInstruction();
+    
+    memorySystem.Print(0x210,1);
+    cpu.PrintRegs();
+    
     
 }

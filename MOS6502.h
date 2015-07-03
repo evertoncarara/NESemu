@@ -9,14 +9,18 @@
 #define BIT_CHECK(reg,bit)  (((reg & (1<<bit)) == 0) ? 0 : 1)      /* Return the bit value (0 or 1) */
 #define BIT_ASSIGN(reg,bit,value)    ((value) ? BIT_SET(reg,bit) : BIT_CLR(reg,bit))     /* Set the indicated bit to value */
 
-struct ProcessorStatus {
-    unsigned char C : 1;        /* Carry flag */
-    unsigned char Z : 1;        /* Zero flag */
-    unsigned char I : 1;        /* IRQ disable(1 = disabled) */
-    unsigned char D : 1;        /* Decimal mode (1 = activated) */
-    unsigned char B : 1;        /* BRK instruction (1 = BRK)*/
-    unsigned char V : 1;        /* Overflow flag */
-    unsigned char N : 1;        /* Negative flag */
+union ProcessorStatus {
+    struct {
+        unsigned char C : 1;        /* Carry flag */
+        unsigned char Z : 1;        /* Zero flag */
+        unsigned char I : 1;        /* IRQ disable(1 = disabled) */
+        unsigned char D : 1;        /* Decimal mode (1 = activated) */
+        unsigned char B : 1;        /* BRK instruction (1 = BRK)*/
+        unsigned char X : 1;        /* Expansion */
+        unsigned char V : 1;        /* Overflow flag */
+        unsigned char N : 1;        /* Negative flag */
+    };
+    unsigned char status;           /* Access to all bit fields at the same time */
 };
 
 class MOS6502 {
@@ -26,13 +30,13 @@ class MOS6502 {
         
         void Init(NESMemorySystem *memory);
         void ExecuteInstruction();
-        void PrintRegs(){ printf("ac: %X; x: %X; y: %X; s: %X N:%X Z:%X V:%X C:%X\n",ac,x,y,s,p.N,p.Z,p.V,p.C); };
+        void PrintRegs(){ printf("ac: %X; x: %X; y: %X; s: %X N:%X Z:%X V:%X C:%X I:%X D:%X\n",ac,x,y,s,p.N,p.Z,p.V,p.C,p.I,p.D); };
         
         
     private:    
         unsigned int pc;
         unsigned char s;
-        struct ProcessorStatus p;    
+        union ProcessorStatus p;    
                                   
         char ac;
         char x;
