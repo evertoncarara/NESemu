@@ -5,18 +5,26 @@
 
 class NESMemorySystem {
     public:
-        NESMemorySystem();
+        NESMemorySystem(unsigned int size);
         ~NESMemorySystem();
         
         unsigned char Read(unsigned int address);
         void Write(unsigned int address, unsigned char data);
         
-        void SetPictureProcessingUnit(PictureProcessingUnit *ppu);
-        unsigned char *GetPPUMemory();   
+        inline void SetPictureProcessingUnit(PictureProcessingUnit *ppu) { this->ppu = ppu; }
+        
+        void Load(char *imageFile);
+        
+        inline void Print(int begin, int size) { 
+            int i; 
+            printf("[%X]: ",begin);
+            for(i=begin; i<(begin+size); i++)
+                printf("%X ",array[i]);
+            printf("\n");                
+        };
         
     private:    
-        unsigned char *cpuMemory;
-        unsigned char *ppuMemory;
+        unsigned char *array;
         PictureProcessingUnit *ppu;
         
 

@@ -172,7 +172,6 @@ void MOS6502::Init(NESMemorySystem *memory) {
     p.I = 0;
     p.D = 0;
     p.B = 1;        /* AllSuite.65p */
-    p.X = 1;        /* AllSuite.65p */
     p.V = 0;
     p.N = 0;
     this->memory = memory;

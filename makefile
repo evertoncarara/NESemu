@@ -1,6 +1,5 @@
-CFLAGS   = -O2 -Wall -std=c++11
+CFLAGS   = -O2 -Wall
 CC  = g++
-SDL2_WIN = Z:\Carara\SDL2-2.0.3
 
 # $@ = The file name of the target of the rule
 # $? = The names of all dependences (list) 
@@ -10,5 +9,5 @@ SDL2_WIN = Z:\Carara\SDL2-2.0.3
 # target: dependences
 #      shell commmands
 
-Emulator:
-	$(CC) Emulator.cpp MOS6502.cpp NESMemorySystem.cpp PictureProcessingUnit.cpp -o $@ $(CFLAGS) -lSDL2main -lSDL2 -lmingw32 -I$(SDL2_WIN)\include -L$(SDL2_WIN)\lib\x86
+emulator:
+	$(CC) Emulator.cpp MOS6502.cpp NESMemorySystem.cpp PictureProcessingUnit.cpp -o $@ $(CFLAGS)
