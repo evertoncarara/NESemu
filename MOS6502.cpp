@@ -1,10 +1,13 @@
 #include "MOS6502.h"
+#include <cassert>
+
 #include <stdio.h>
 
 MOS6502::MOS6502() {  
     
-    int i;
-    for (i=0; i<256; i++)
+    memory = NULL;
+
+    for (int i=0; i<256; i++)
         instruction[i] = NULL;
         
     instruction[0x01] = &MOS6502::ORA_IND_X;
@@ -157,13 +160,18 @@ MOS6502::MOS6502() {
     instruction[0xF8] = &MOS6502::SED;
     instruction[0xF9] = &MOS6502::SBC_ABS_Y;
     instruction[0xFD] = &MOS6502::SBC_ABS_X;
-    instruction[0xFE] = &MOS6502::INC_ABS_X;
-    
+    instruction[0xFE] = &MOS6502::INC_ABS_X;    
 }
 
 MOS6502::~MOS6502(){}
 
 void MOS6502::Init(NESMemorySystem *memory) {
+    
+    this->memory = memory;
+}
+
+void MOS6502::Reset() {
+    
     //pc = 0;
     pc = 0x4000;    /* AllSuite.65p */
     s = 0xFF;
@@ -174,11 +182,12 @@ void MOS6502::Init(NESMemorySystem *memory) {
     p.B = 1;        /* AllSuite.65p */
     p.V = 0;
     p.N = 0;
-    this->memory = memory;
 }
 
 void MOS6502::ExecuteInstruction() {
     
+    assert(memory != NULL && "CPU not initialized");
+
     unsigned char opcode;
     
     opcode = memory->Read(pc++);
