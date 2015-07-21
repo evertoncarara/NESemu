@@ -1633,8 +1633,8 @@ void MOS6502::JSR() {
     address = memory->Read(pc++);   /* Read the low byte address */
     address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
     
-    memory->Write(s--,(pc & 0xFF00)>>8);    /* Store the return address high byte */
-    memory->Write(s--,(pc & 0xFF));         /* Store the return address low byte */
+    memory->Write(0x100|s--,(pc & 0xFF00)>>8);    /* Store the return address high byte */
+    memory->Write(0x100|s--,(pc & 0xFF));         /* Store the return address low byte */
     
     pc = address;                   
 }
@@ -1643,8 +1643,8 @@ void MOS6502::RTS() {
     
     unsigned int address;           /* Absolute address */
     
-    address = memory->Read(++s);   /* Read the low byte address */
-    address = (memory->Read(++s)<<8) | address;    /* Read the high byte address */
+    address = memory->Read(0x100|++s);   /* Read the low byte address */
+    address = (memory->Read(0x100|++s)<<8) | address;    /* Read the high byte address */
     
     pc = address;
 }
@@ -1653,21 +1653,21 @@ void MOS6502::RTI() {
     
     unsigned int address;           /* Absolute address */
     
-    p.status = memory->Read(++s);   /* Retrieves processor status register */
+    p.status = memory->Read(0x100|++s);   /* Retrieves processor status register */
     
-    address = memory->Read(++s);   /* Read the low byte address */
-    address = (memory->Read(++s)<<8) | address;    /* Read the high byte address */
+    address = memory->Read(0x100|++s);   /* Read the low byte address */
+    address = (memory->Read(0x100|++s)<<8) | address;    /* Read the high byte address */
     
     pc = address;
 }
 
-void MOS6502::PHP() { memory->Write(s--,p.status); }
+void MOS6502::PHP() { memory->Write(0x100|s--,p.status); }
 
-void MOS6502::PLP() { p.status = memory->Read(++s); }
+void MOS6502::PLP() { p.status = memory->Read(0x100|++s); }
 
-void MOS6502::PHA() { memory->Write(s--,ac); }
+void MOS6502::PHA() { memory->Write(0x100|s--,ac); }
 
-void MOS6502::PLA() { ac = memory->Read(++s); }
+void MOS6502::PLA() { ac = memory->Read(0x100|++s); }
 
 void MOS6502::TAX() {
     

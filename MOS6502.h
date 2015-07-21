@@ -29,7 +29,10 @@ class MOS6502 {
         ~MOS6502();
         
         void Init(NESMemorySystem *memory);
+        void Reset();
         void ExecuteInstruction();
+        void NMI();
+        void IRQ();
         void PrintRegs(){ printf("ac: %X; x: %X; y: %X; s: %X N:%X Z:%X V:%X C:%X I:%X D:%X\n",ac,x,y,s,p.N,p.Z,p.V,p.C,p.I,p.D); };
         
         
@@ -45,7 +48,7 @@ class MOS6502 {
         NESMemorySystem *memory;
         
         typedef void (MOS6502::*FunctionPointer)();
-        FunctionPointer instruction[256];
+        FunctionPointer instruction[256];   // Pointers to the functions witch implement the instructions behaviour
         
         void BRK();
         void ORA_IND_X();
