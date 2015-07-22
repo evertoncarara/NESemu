@@ -7,6 +7,13 @@ PictureProcessingUnit::PictureProcessingUnit() {
 
 PictureProcessingUnit::~PictureProcessingUnit(){}
 
+void PictureProcessingUnit::Reset() {
+
+    for(int i=0; i<8; i++)
+        registers[i] = 0;
+    OAMDMA = 0;
+}
+
 void PictureProcessingUnit::Init(unsigned char *ppuMemory) { 
 
 	memory = ppuMemory; 
@@ -92,6 +99,7 @@ int PictureProcessingUnit::LoadPatternTables(char *fileName) {
     /* Access the iNES header */
     struct iNES *iNES_header = (struct iNES *)buffer;
     
+    cout << "Loading pattern tables..." << endl;
     cout << "File: " << fileName << endl;
     cout << "Size: " << fileSize << " Bytes" << endl;
     cout << "PRG_ROM: " << static_cast<int>(iNES_header->PRG_ROM) << " * 16KB" << endl;
@@ -107,7 +115,9 @@ int PictureProcessingUnit::LoadPatternTables(char *fileName) {
 
 		delete [] buffer;
 
-    	return 0;
+    	cout << "Pattern tables loaded!" << endl;
+
+        return 0;
 
     }  
 

@@ -92,6 +92,22 @@
 			}
 		},
 		{
+			"file": "MOS6502.h",
+			"settings":
+			{
+				"buffer_size": 5624,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "MOS6502.cpp",
+			"settings":
+			{
+				"buffer_size": 72557,
+				"line_ending": "Windows"
+			}
+		},
+		{
 			"file": "PictureProcessingUnit.h",
 			"settings":
 			{
@@ -119,23 +135,7 @@
 			"file": "NESMemorySystem.cpp",
 			"settings":
 			{
-				"buffer_size": 2051,
-				"line_ending": "Windows"
-			}
-		},
-		{
-			"file": "MOS6502.h",
-			"settings":
-			{
-				"buffer_size": 5571,
-				"line_ending": "Windows"
-			}
-		},
-		{
-			"file": "MOS6502.cpp",
-			"settings":
-			{
-				"buffer_size": 72407,
+				"buffer_size": 2197,
 				"line_ending": "Windows"
 			}
 		}
@@ -230,7 +230,7 @@
 	"groups":
 	[
 		{
-			"selected": 5,
+			"selected": 6,
 			"sheets":
 			[
 				{
@@ -245,8 +245,8 @@
 						"selection":
 						[
 							[
-								739,
-								739
+								330,
+								330
 							]
 						],
 						"settings":
@@ -263,6 +263,62 @@
 				},
 				{
 					"buffer": 1,
+					"file": "MOS6502.h",
+					"settings":
+					{
+						"buffer_size": 5624,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.tmLanguage",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 236.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "MOS6502.cpp",
+					"settings":
+					{
+						"buffer_size": 72557,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								6664,
+								6664
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.tmLanguage",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				},
+				{
+					"buffer": 3,
 					"file": "PictureProcessingUnit.h",
 					"settings":
 					{
@@ -284,13 +340,13 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 956.0,
+						"translation.y": 624.0,
 						"zoom_level": 1.0
 					},
 					"type": "text"
 				},
 				{
-					"buffer": 2,
+					"buffer": 4,
 					"file": "PictureProcessingUnit.cpp",
 					"settings":
 					{
@@ -318,7 +374,7 @@
 					"type": "text"
 				},
 				{
-					"buffer": 3,
+					"buffer": 5,
 					"file": "NESMemorySystem.h",
 					"settings":
 					{
@@ -346,19 +402,19 @@
 					"type": "text"
 				},
 				{
-					"buffer": 4,
+					"buffer": 6,
 					"file": "NESMemorySystem.cpp",
 					"settings":
 					{
-						"buffer_size": 2051,
+						"buffer_size": 2197,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								2017,
-								2017
+								1361,
+								1361
 							]
 						],
 						"settings":
@@ -369,62 +425,6 @@
 						},
 						"translation.x": 0.0,
 						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"type": "text"
-				},
-				{
-					"buffer": 5,
-					"file": "MOS6502.h",
-					"settings":
-					{
-						"buffer_size": 5571,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								1316,
-								1316
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/C++/C++.tmLanguage",
-							"tab_size": 4,
-							"translate_tabs_to_spaces": true
-						},
-						"translation.x": 0.0,
-						"translation.y": 236.0,
-						"zoom_level": 1.0
-					},
-					"type": "text"
-				},
-				{
-					"buffer": 6,
-					"file": "MOS6502.cpp",
-					"settings":
-					{
-						"buffer_size": 72407,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								444,
-								444
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/C++/C++.tmLanguage",
-							"tab_size": 4,
-							"translate_tabs_to_spaces": true
-						},
-						"translation.x": 0.0,
-						"translation.y": 2537.0,
 						"zoom_level": 1.0
 					},
 					"type": "text"

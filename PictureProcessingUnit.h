@@ -58,7 +58,11 @@ class PictureProcessingUnit {
         PictureProcessingUnit();
         ~PictureProcessingUnit();
         
+        void Init(unsigned char *ppuMemory);
+        void Reset();
+
         /* Registers access */
+        // IMPLEMENTAR PROTEÇÃO CONTRA ESCRITA EM REGS SÓ DE LEITURA
         inline unsigned char ReadRegister(unsigned char n) { return registers[n]; }
         inline void WriteRegister(unsigned char n, unsigned char data) { registers[n] = data; }
         
@@ -66,7 +70,7 @@ class PictureProcessingUnit {
         inline void WriteSpriteMemory(unsigned char address, unsigned char data) { spriteMemory[address] = data; }
 
         
-        void Init(unsigned char *ppuMemory);
+        
         
         /*** TEST PURPOSES ***/
         int LoadPatternTables(char *fileName);

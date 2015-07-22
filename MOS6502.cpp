@@ -172,14 +172,19 @@ void MOS6502::Init(NESMemorySystem *memory) {
 
 void MOS6502::Reset() {
     
-    //pc = 0;
-    pc = 0x4000;    /* AllSuite.65p */
-    s = 0xFF;
+    /* Initialize pc with the reset vector at 0xFFFD:0xFFFC */
+    unsigned int address;
+    address = memory->Read(0xFFFC);   /* Read the low byte address */
+    address = (memory->Read(0xFFFD)<<8) | address;    /* Read the high byte address */
+    pc = address;
+
+    s = 0xFD;       // Visual6502
     p.C = 0;
     p.Z = 0;
     p.I = 0;
     p.D = 0;
-    p.B = 1;        /* AllSuite.65p */
+    p.B = 0;        
+    p.X = 1;        // Hardwired (unused bit)
     p.V = 0;
     p.N = 0;
 }

@@ -13,23 +13,42 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
+
     MOS6502 cpu;
     PictureProcessingUnit ppu;
-    
-    NESMemorySystem memorySystem;            // 64KB
-    memorySystem.SetPictureProcessingUnit(&ppu);    /* PPU registers access controlled by the memory system */      
-    
-    cpu.Init(&memorySystem);
-    
+    NESMemorySystem memorySystem;
+
     ppu.Init(memorySystem.GetPPUMemory());
+    ppu.Reset();
+
+    memorySystem.SetPictureProcessingUnit(&ppu);    /* PPU registers access controlled by the memory system */
+    memorySystem.Init(argv[1]);
+
+    cpu.Init(&memorySystem);
+    cpu.Reset();
+    
+    for(int i=0; i<10; i++)
+        cpu.ExecuteInstruction();
+
+    cpu.PrintRegs();
+
+    
+    //memorySystem.ppuDump(0x0000,40);
+
+    
+          
+    
+    
+    
+    
    
-    if (ppu.LoadPatternTables(argv[1]) == 0) {
+    //if (ppu.LoadPatternTables(argv[1]) == 0) {
         ppu.LoadBackgroundPalette();
-        //ppu.ShowPatternTables();
-        ppu.LoadNameTable(0);
-        ppu.LoadAttributeTable(0);
-        ppu.ShowNameTable(0);
-    }
+        ppu.ShowPatternTables();
+      //  ppu.LoadNameTable(0);
+      //  ppu.LoadAttributeTable(0);
+        //ppu.ShowNameTable(0);
+    //}
 
 
 

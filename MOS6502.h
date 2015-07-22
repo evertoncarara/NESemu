@@ -33,7 +33,7 @@ class MOS6502 {
         void ExecuteInstruction();
         void NMI();
         void IRQ();
-        void PrintRegs(){ printf("ac: %X; x: %X; y: %X; s: %X N:%X Z:%X V:%X C:%X I:%X D:%X\n",ac,x,y,s,p.N,p.Z,p.V,p.C,p.I,p.D); };
+        void PrintRegs(){ printf("ac: %X; x: %X; y: %X; s: %X N:%X Z:%X V:%X C:%X I:%X D:%X PC: %X\n",ac,x,y,s,p.N,p.Z,p.V,p.C,p.I,p.D,pc); };
         
         
     private:    
