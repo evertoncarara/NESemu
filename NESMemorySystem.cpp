@@ -1,20 +1,22 @@
 #include "NESMemorySystem.h"
 #include <string.h>     // memcpy()
-#include <cstdlib>     // abort()
+#include <cstdlib>      // abort()
+#include <cassert>
 
 #include <stdio.h>
 
-#define PPU     0x2000
-#define APU     0x4000
-#define PRG_ROM_LOW 0x8000
-#define PRG_ROM_UP  0xC000
+#define PPU         0x2000
+#define APU         0x4000
+#define OAMDMA      0x4014 // OAM DMA register (high byte) Access: write
+#define PRG_ROM_LOW 0x8000  // PRG-ROM lower bank address
+#define PRG_ROM_UP  0xC000  // PRG-ROM upper bank address
 
 
 /*** 
 *   NES Memory map
 *       RAM             : 0000-1FFF (0000-07FF: 2KB RAM. Mirrors: 0800-0FFF, 1000-17FF, 1800-1FFF)
-*       IO (PPU)        : 2000-3FFF (2000-2007: PPU regs. Mirrors: 2008-3FFF repeats every 8 bytes)
-*       IO (APU)        : 4000-401F
+*       PPU             : 2000-3FFF (2000-2007: PPU regs. Mirrors: 2008-3FFF repeats every 8 bytes)
+*       APU             : 4000-401F
 *
 *       Cartridge space
 *       Expansion ROM   : 4020-5FFF
@@ -26,6 +28,7 @@ NESMemorySystem::NESMemorySystem() {
 
     cpuMemory = new unsigned char[64*1024]; // 64KB
     ppuMemory = new unsigned char[64*1024]; // 64 KB
+    ppu = NULL;
 }
 
 NESMemorySystem::~NESMemorySystem() { 
@@ -33,7 +36,11 @@ NESMemorySystem::~NESMemorySystem() {
     delete [] ppuMemory;
 }
 
-void NESMemorySystem::Init(char *fileName) {
+/*** 
+ *  Load game code into the CPU memory
+ *  Load pattern table,if any, into the PPU memory 
+ ***/
+void NESMemorySystem::Load(char *fileName) {
 
     ifstream romFile(fileName, ios::binary);
     
@@ -63,6 +70,7 @@ void NESMemorySystem::Init(char *fileName) {
     cout << "CHR_ROM: " << static_cast<int>(iNES_header->CHR_ROM) << " * 8KB (0 means the board uses CHR-RAM)" << endl;
     
     
+    /* Game code loading */
     cout << "Loading game code..." << endl;
 
     /* Load lower bank (0x8000) */
@@ -76,14 +84,16 @@ void NESMemorySystem::Init(char *fileName) {
 
     cout << "Game code loaded!" << endl;
 
+    
+    /* Pattern tables loading */
     cout << "Loading pattern tables..." << endl;
     unsigned int chr_offset;
     if (iNES_header->CHR_ROM > 0) {
         chr_offset = sizeof(struct iNES) + (iNES_header->PRG_ROM*16*1024);
         cout << "CHR_ROM starts at: " << chr_offset << endl;
     
-        /* Copy pattern tables from rom file to the ppu memory */
-        memcpy(ppuMemory,buffer+chr_offset,(8*1024));
+        /* Copy pattern tables from rom file (CHR-RAM) to the ppu memory */
+        memcpy(ppuMemory,buffer+chr_offset,(8*1024));   // Copy 8KB
 
         cout << "Pattern tables loaded!" << endl;
     }  
@@ -93,7 +103,7 @@ void NESMemorySystem::Init(char *fileName) {
 
 void NESMemorySystem::cpuDump(int startAddr, int bytes) {
 
-    printf("CPU Memory dump...%X\n",startAddr);
+    printf("CPU Memory dump...\n");
 
     for(int i=startAddr,j=0; i<(startAddr+bytes); i++,j++) {
         if ( (i%16) == 0) {
@@ -133,6 +143,7 @@ unsigned char NESMemorySystem::Read(unsigned int address) {
         data = cpuMemory[address];
     } 
     else if (address >= PPU && address < APU) {     /* PPU registers */
+        assert(ppu != NULL && "PPU not set");
         address = (address & 0x2007) & 7;      /* Mirroring and select the register number (0-7) */
         data = ppu->ReadRegister(address);        
     }
@@ -153,15 +164,21 @@ void NESMemorySystem::Write(unsigned int address, unsigned char data) {
         cpuMemory[address] = data;
     } 
     else if (address >= PPU && address < APU) {     /* PPU registers */
+        assert(ppu != NULL && "PPU not set");
         address = (address & 0x2007) & 7;      /* Mirroring and select the register number (0-7) */
         ppu->WriteRegister(address,data);        
     }
+    else if (address == OAMDMA)
+        ppu->StartDMA(data);
     else {
         printf("WARNING: CPU writing from unimplemented address: %X\n",address);
         //abort();
     } 
  }
 
-void NESMemorySystem::SetPictureProcessingUnit(PictureProcessingUnit *ppu) { this->ppu = ppu; }
 
- unsigned char *NESMemorySystem::GetPPUMemory() { return ppuMemory; }
+void NESMemorySystem::SetPictureProcessingUnit(PictureProcessingUnit *ppu) {  this->ppu = ppu; }
+
+unsigned char *NESMemorySystem::GetPPUMemory() { return ppuMemory; }
+
+ unsigned char *NESMemorySystem::GetCPUMemory() { return cpuMemory; }

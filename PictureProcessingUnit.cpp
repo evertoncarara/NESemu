@@ -1,8 +1,10 @@
 #include "PictureProcessingUnit.h"
-
+#include <cassert>
 #include <string.h>	// memcpy()
 
 PictureProcessingUnit::PictureProcessingUnit() { 
+
+    memory = NULL;
 }
 
 PictureProcessingUnit::~PictureProcessingUnit(){}
@@ -11,12 +13,16 @@ void PictureProcessingUnit::Reset() {
 
     for(int i=0; i<8; i++)
         registers[i] = 0;
-    OAMDMA = 0;
+
+    vramAddressByteAccess = 0;
 }
 
-void PictureProcessingUnit::Init(unsigned char *ppuMemory) { 
+void PictureProcessingUnit::Init(unsigned char *ppuMemory, unsigned char *cpuMemory) { 
 
-	memory = ppuMemory; 
+	assert(ppuMemory != NULL && "PPU memory not initialized");
+
+    memory = ppuMemory; 
+    this->cpuMemory = cpuMemory;
 
 	/*** Set the memory map ***/
     patternTable[0] = &memory[0x0000];
@@ -43,7 +49,70 @@ void PictureProcessingUnit::Init(unsigned char *ppuMemory) {
     spritePalette[1] = &memory[0x3F14];
     spritePalette[2] = &memory[0x3F18];
     spritePalette[3] = &memory[0x3F1C];
+
+    ppuControl = (union PPUControl *)&registers[PPUCTRL];
+    ppuStatus = (union PPUStatus *)&registers[PPUSTATUS];
+
 }
+
+unsigned char PictureProcessingUnit::ReadRegister(unsigned char n) { 
+
+    unsigned char regValue = registers[n];
+
+    /* Reading the status register will clear D7 mentioned above and also 
+    the address latch used by PPUSCROLL and PPUADDR. It does not clear 
+    the sprite 0 hit or overflow bit. */
+    if (n == PPUSTATUS) {
+        ppuStatus->V = 0;
+        ppuStatus->bits = 0;    // ppuStatus[4:0] = 0
+    }
+    
+    return regValue; 
+}
+
+void PictureProcessingUnit::WriteRegister(unsigned char n, unsigned char data) { 
+
+    registers[n] = data;
+
+    if (n == PPUADDR) {
+        (vramAddressByteAccess == 0) ? vramAddress = data<<8 : vramAddress |= data;
+        vramAddressByteAccess = !vramAddressByteAccess;
+
+    } else if (n == PPUDATA) {
+        memory[vramAddress] = data;
+        (ppuControl->I == 0) ? vramAddress++ : vramAddress += 32;
+    }
+    
+}
+
+void PictureProcessingUnit::StartDMA(unsigned char addressHighByte) {
+
+    unsigned int cpuMemoryAddress = addressHighByte<<8 | registers[OAMADDR];  // Source: CPU RAM address
+
+    printf("cpuMemoryAddress: %X\n", cpuMemoryAddress);
+
+    for(int i=0; i<256; i++)
+        spriteMemory[i] = cpuMemory[cpuMemoryAddress+i];
+}
+
+
+void PictureProcessingUnit::spriteDump(int startAddr, int bytes) {
+
+    printf("Sprite Memory dump...%X\n",startAddr);
+
+    for(int i=startAddr,j=0; i<(startAddr+bytes); i++,j++) {
+        if ( (i%16) == 0) {
+            printf("\n");
+            printf("[%04X]: ",(startAddr+j));
+        }
+
+        printf("%02X ",spriteMemory[startAddr+j]);   
+    }
+    printf("\n");
+}
+
+
+
 
 void PictureProcessingUnit::PutPixel(SDL_Surface *surface, const int x, const int y, const Uint8 r, const Uint8 g, const Uint8 b) {
     
@@ -60,6 +129,8 @@ void PictureProcessingUnit::PutPixel(SDL_Surface *surface, const int x, const in
 
 void PictureProcessingUnit::PlotTile(SDL_Surface *surface, const int x, const int y, const unsigned char tile[], const unsigned char paletteIndex) {
     
+    assert(memory != NULL && "PPU memory not initialized");
+
     unsigned char pixelColorIndex;  // Tile pixel color index
     unsigned char nesPaletteIndex;  // NES palette index
 
@@ -75,6 +146,11 @@ void PictureProcessingUnit::PlotTile(SDL_Surface *surface, const int x, const in
         }
     }
 }
+
+
+
+
+
 
 int PictureProcessingUnit::LoadPatternTables(char *fileName) {
 

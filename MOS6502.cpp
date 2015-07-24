@@ -203,6 +203,25 @@ void MOS6502::ExecuteInstruction() {
         printf("INVALID INSTRUCTION: opcode = %X (pc = %X)\n",opcode,pc-1);
 };
 
+void MOS6502::NMI() {
+
+    /* Store pc and status processor register on stack */
+    unsigned char pcl = pc & 0xFF;
+    unsigned char pch = (pc & 0xFF00)>>8;
+    memory->Write(0x100|s--,pch);         // Store pc high byte
+    memory->Write(0x100|s--,pcl);         // Store pc low byte   
+    memory->Write(0x100|s--,p.status);    // Store status 
+
+    /* Initialize pc with the NMI vector at 0xFFFB:0xFFFA */
+    unsigned int address;
+    address = memory->Read(0xFFFA);                 // Read the low byte address 
+    address = (memory->Read(0xFFFB)<<8) | address;  // Read the high byte address
+    pc = address;   
+
+    /* Disable interruptons */ 
+    p.I = 1;    // MAYBE UNECESSARY 
+}
+
 void MOS6502::LDA_IMM() { 
     
     ac = memory->Read(pc++);
@@ -1668,7 +1687,8 @@ void MOS6502::RTI() {
     unsigned int address;           /* Absolute address */
     
     p.status = memory->Read(0x100|++s);   /* Retrieves processor status register */
-    
+    p.I = 0;    // Enable IRQs
+
     address = memory->Read(0x100|++s);   /* Read the low byte address */
     address = (memory->Read(0x100|++s)<<8) | address;    /* Read the high byte address */
     

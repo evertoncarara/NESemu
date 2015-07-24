@@ -8,13 +8,14 @@ class NESMemorySystem {
         NESMemorySystem();
         ~NESMemorySystem();
 
-        void Init(char *fileName);
+        void Load(char *fileName);
 
         unsigned char Read(unsigned int address);
         void Write(unsigned int address, unsigned char data);
         
         void SetPictureProcessingUnit(PictureProcessingUnit *ppu);
         unsigned char *GetPPUMemory();
+        unsigned char *GetCPUMemory();
 
         /*** Test purposes ***/
         void cpuDump(int startAddr, int bytes);  

@@ -18,22 +18,66 @@ int main(int argc, char *argv[]) {
     PictureProcessingUnit ppu;
     NESMemorySystem memorySystem;
 
-    ppu.Init(memorySystem.GetPPUMemory());
+    ppu.Init(memorySystem.GetPPUMemory(),memorySystem.GetCPUMemory());
     ppu.Reset();
 
+    memorySystem.Load(argv[1]);                     // Load PRG-ROM and CHR-ROM (if any)
     memorySystem.SetPictureProcessingUnit(&ppu);    /* PPU registers access controlled by the memory system */
-    memorySystem.Init(argv[1]);
 
     cpu.Init(&memorySystem);
     cpu.Reset();
     
-    for(int i=0; i<10; i++)
+    /*** Execute sprites.nes ***/
+
+    ppu.WriteRegister(2,0x80);    // Set in vertical blank
+
+    for(int i=0; i<12; i++)         // ; First wait for vblank to make sure PPU is ready
         cpu.ExecuteInstruction();
+
+    
+    for(int i=0; i<256*12; i++)
+        cpu.ExecuteInstruction();   // clrmem
+
+    
+    ppu.WriteRegister(2,0x80);    // Set in vertical blank
+
+
+    cpu.ExecuteInstruction();
+    cpu.ExecuteInstruction();   //Second wait for vblank, PPU is ready after this
+
+    
+    // ************** NEW CODE ****************
+    for(int i=0; i<6; i++)
+        cpu.ExecuteInstruction();   // LoadPalettes
+
+    for(int i=0; i<32*5; i++)
+        cpu.ExecuteInstruction();   // LoadPalettesLoop
+
+    memorySystem.ppuDump(0x3F00,0x20); 
+
+    for(int i=0; i<10; i++)
+        cpu.ExecuteInstruction();   // sprite code and ppu control
+
+    memorySystem.cpuDump(0x200,4);
+
+    for(int i=0; i<30; i++)
+        cpu.ExecuteInstruction();   // jump back to Forever, infinite loop
+
+    cpu.NMI();
+    
+
+    for(int i=0; i<5; i++)
+        cpu.ExecuteInstruction();   // NMI handler
+
+    ppu.spriteDump(0,256);
+
+    for(int i=0; i<30; i++)
+        cpu.ExecuteInstruction();   // jump back to Forever, infinite loop
 
     cpu.PrintRegs();
 
     
-    //memorySystem.ppuDump(0x0000,40);
+    
 
     
           
@@ -43,8 +87,8 @@ int main(int argc, char *argv[]) {
     
    
     //if (ppu.LoadPatternTables(argv[1]) == 0) {
-        ppu.LoadBackgroundPalette();
-        ppu.ShowPatternTables();
+        //ppu.LoadBackgroundPalette();
+        //ppu.ShowPatternTables();
       //  ppu.LoadNameTable(0);
       //  ppu.LoadAttributeTable(0);
         //ppu.ShowNameTable(0);

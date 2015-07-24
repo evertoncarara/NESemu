@@ -10,7 +10,7 @@
 #define PPUCTRL     0   // PPU control register (Access: write)
 #define PPUMASK     1   // PPU mask register (Access: write)
 #define PPUSTATUS   2   // PPU status register (Access: read)
-#define OAMADDR     3   // OAM (Object Attribute Memor) address port (Access: write)
+#define OAMADDR     3   // OAM (Object Attribute Memory) address port (Access: write)
 #define OAMDATA     4   // OAM data port (Access: read, write)
 #define PPUSCROLL   5   // PPU scrolling position register (Access: write twice)
 #define PPUADDR     6   // PPU address register (Access: write twice)
@@ -53,18 +53,42 @@ struct iNES {
     char zero[5];               // Zero filled
 };
 
+union PPUControl {
+    struct {
+        unsigned char N : 2;    // Name Table number
+        unsigned char I : 1;    // VRAM address increment per CPU read/write of PPUDATA (0: add 1, going across; 1: add 32, going down)
+        unsigned char S : 1;    // Sprite pattern table number (0: $0000; 1: $1000; ignored in 8x16 mode)
+        unsigned char B : 1;    // Background pattern table number (0: $0000; 1: $1000)
+        unsigned char H : 1;    // Sprite size (0: 8x8; 1: 8x16)
+        unsigned char P : 1;    // PPU master/slave select (0: read backdrop from EXT pins; 1: output color on EXT pins)
+        unsigned char V : 1;    // Generate an NMI at the start of the vertical blanking interval (0: off; 1: on)
+    };
+    unsigned char status;           /* Access to all bit fields at the same time */
+};
+
+union PPUStatus {
+    struct {
+        unsigned char bits : 5;     // Least significant bits previously written into a PPU register
+        unsigned char O : 1;        // Sprite overflow (more than eight sprites appear on a scanline)
+        unsigned char S : 1;        // Sprite 0 Hit
+        unsigned char V : 1;        // Vertical blank has started (0: not in vblank; 1: in vblank)
+    };
+    unsigned char status;           /* Access to all bit fields at the same time */
+};
+
 class PictureProcessingUnit {
     public:
         PictureProcessingUnit();
         ~PictureProcessingUnit();
         
-        void Init(unsigned char *ppuMemory);
+        void Init(unsigned char *ppuMemory, unsigned char *cpuMemory);
         void Reset();
 
         /* Registers access */
         // IMPLEMENTAR PROTEÇÃO CONTRA ESCRITA EM REGS SÓ DE LEITURA
-        inline unsigned char ReadRegister(unsigned char n) { return registers[n]; }
-        inline void WriteRegister(unsigned char n, unsigned char data) { registers[n] = data; }
+        unsigned char ReadRegister(unsigned char n);
+        void WriteRegister(unsigned char n, unsigned char data);
+        void StartDMA(unsigned char addressHighByte);
         
         /* Sprite memory access */
         inline void WriteSpriteMemory(unsigned char address, unsigned char data) { spriteMemory[address] = data; }
@@ -82,6 +106,7 @@ class PictureProcessingUnit {
         void LoadBackgroundPalette();
 
         void LoadAttributeTable(unsigned char number);
+        void spriteDump(int startAddr, int bytes);
         /********************/
                 
     private:      
@@ -89,8 +114,11 @@ class PictureProcessingUnit {
         void PlotTile(SDL_Surface *surface, const int x, const int y, const unsigned char tile[], const unsigned char paletteIndex);
 
         unsigned char registers[8];
-        unsigned char OAMDMA;               // 0x4014: OAM DMA register (high byte) Access: write
+        union PPUStatus *ppuStatus;
+        union PPUControl *ppuControl;
+
         unsigned char *memory;              // Main PPU memory
+        unsigned char *cpuMemory;            // Only read access in order to execute DMA
         
         /* Memory sections */
         unsigned char *patternTable[2];     
@@ -99,7 +127,11 @@ class PictureProcessingUnit {
         unsigned char *backgroundPalette[4];  
         unsigned char *spritePalette[4];
 
-        unsigned char spriteMemory[256];    // SPR-RAM (OAM: Object Attribute Memory)   
+        unsigned char spriteMemory[256];    // SPR-RAM (OAM: Object Attribute Memory) 
+
+        unsigned int vramAddress;
+        char vramAddressByteAccess;                // 
+
          
 
         // NES palette
