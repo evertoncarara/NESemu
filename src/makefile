@@ -10,5 +10,5 @@ SDL2_WIN = Z:\Carara\SDL2-2.0.3
 # target: dependences
 #      shell commmands
 
-Emulator:
-	$(CC) Emulator.cpp MOS6502.cpp NESMemorySystem.cpp PictureProcessingUnit.cpp -o $@ $(CFLAGS) -lSDL2main -lSDL2 -lmingw32 -I$(SDL2_WIN)\include -L$(SDL2_WIN)\lib\x86
+NESemu:
+	$(CC) NESemu.cpp MOS6502.cpp MemorySystem.cpp PictureProcessingUnit.cpp UserInput.cpp -o $@ $(CFLAGS) -lSDL2main -lSDL2 -lmingw32 -I$(SDL2_WIN)\include -L$(SDL2_WIN)\lib\x86

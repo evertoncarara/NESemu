@@ -1,5 +1,6 @@
 #include "MOS6502.h"
 #include <cassert>
+#include <cstdlib>      // abort()
 
 #include <stdio.h>
 
@@ -10,6 +11,7 @@ MOS6502::MOS6502() {
     for (int i=0; i<256; i++)
         instruction[i] = NULL;
         
+    instruction[0x00] = &MOS6502::BRK;
     instruction[0x01] = &MOS6502::ORA_IND_X;
     instruction[0x05] = &MOS6502::ORA_ZPG;
     instruction[0x06] = &MOS6502::ASL_ZPG;
@@ -165,7 +167,7 @@ MOS6502::MOS6502() {
 
 MOS6502::~MOS6502(){}
 
-void MOS6502::Init(NESMemorySystem *memory) {
+void MOS6502::Init(MemorySystem *memory) {
     
     this->memory = memory;
 }
@@ -189,21 +191,26 @@ void MOS6502::Reset() {
     p.N = 0;
 }
 
-void MOS6502::ExecuteInstruction() {
+int MOS6502::ExecuteInstruction() {
     
     assert(memory != NULL && "CPU not initialized");
 
     unsigned char opcode;
+    unsigned int instructionCycles = 0;
     
     opcode = memory->Read(pc++);
     
     if (instruction[opcode] != NULL)
-        (this->*instruction[opcode])();
-    else
+        instructionCycles = (this->*instruction[opcode])();
+    else {
         printf("INVALID INSTRUCTION: opcode = %X (pc = %X)\n",opcode,pc-1);
+        //abort();
+    }
+
+    return instructionCycles;
 };
 
-void MOS6502::NMI() {
+int MOS6502::NMI() {
 
     /* Store pc and status processor register on stack */
     unsigned char pcl = pc & 0xFF;
@@ -220,36 +227,63 @@ void MOS6502::NMI() {
 
     /* Disable interruptons */ 
     p.I = 1;    // MAYBE UNECESSARY 
+
+    return 7;
 }
 
-void MOS6502::LDA_IMM() { 
+int MOS6502::BRK() {
+    
+    /* Store pc and status processor register on stack */
+    unsigned char pcl = pc & 0xFF;
+    unsigned char pch = (pc & 0xFF00)>>8;
+    memory->Write(0x100|s--,pch);         // Store pc high byte
+    memory->Write(0x100|s--,pcl);         // Store pc low byte   
+    memory->Write(0x100|s--,p.status);    // Store status 
+
+    /* Initialize pc with the BRK/IRQ vector at 0xFFFE:0xFFFF */
+    unsigned int address;
+    address = memory->Read(0xFFFE);                 // Read the low byte address 
+    address = (memory->Read(0xFFFF)<<8) | address;  // Read the high byte address
+    pc = address;   
+
+    return 7;
+}
+
+
+int MOS6502::LDA_IMM() { 
     
     ac = memory->Read(pc++);
 
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 2;                           // Clock cycles
 }
 
-void MOS6502::LDX_IMM() { 
+int MOS6502::LDX_IMM() { 
     
     x = memory->Read(pc++); 
     
     (x == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (x < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 2;                           // Clock cycles
 }
 
-void MOS6502::LDY_IMM() { 
+int MOS6502::LDY_IMM() { 
     
     y = memory->Read(pc++); 
     
     (y == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (y < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 2;                           // Clock cycles
 }
 
-void MOS6502::LDA_ABS() {
+int MOS6502::LDA_ABS() {
     
     unsigned int address;           /* Absolute address */
     
@@ -261,9 +295,11 @@ void MOS6502::LDA_ABS() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 4;                           // Clock cycles
 }
 
-void MOS6502::LDX_ABS() {
+int MOS6502::LDX_ABS() {
     
     unsigned int address;           /* Absolute address */
     
@@ -275,9 +311,11 @@ void MOS6502::LDX_ABS() {
     (x == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (x < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 4;                           // Clock cycles
 }
 
-void MOS6502::LDY_ABS() {
+int MOS6502::LDY_ABS() {
     
     unsigned int address;           /* Absolute address */
     
@@ -289,9 +327,11 @@ void MOS6502::LDY_ABS() {
     (y == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (y < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 4;                           // Clock cycles
 }
 
-void MOS6502::LDA_ABS_X() {
+int MOS6502::LDA_ABS_X() {
     
     unsigned int address;       /* Absolute address */
     
@@ -303,9 +343,11 @@ void MOS6502::LDA_ABS_X() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 4;                           // Clock cycles
 }
 
-void MOS6502::LDA_ABS_Y() {
+int MOS6502::LDA_ABS_Y() {
     
     unsigned int address;       /* Absolute address */
     
@@ -317,9 +359,11 @@ void MOS6502::LDA_ABS_Y() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 4;                           // Clock cycles
 }
 
-void MOS6502::LDX_ABS_Y() {
+int MOS6502::LDX_ABS_Y() {
     
     unsigned int address;           /* Absolute address */
     
@@ -331,9 +375,11 @@ void MOS6502::LDX_ABS_Y() {
     (x == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (x < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 4;                           // Clock cycles
 }
 
-void MOS6502::LDY_ABS_X() {
+int MOS6502::LDY_ABS_X() {
     
     unsigned int address;       /* Absolute address */
     
@@ -345,36 +391,44 @@ void MOS6502::LDY_ABS_X() {
     (y == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (y < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 4;                           // Clock cycles
 }
 
-void MOS6502::LDA_ZPG() { 
+int MOS6502::LDA_ZPG() { 
     
     ac = memory->Read(memory->Read(pc++)); 
     
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 4;                           // Clock cycles
 }
 
-void MOS6502::LDX_ZPG() { 
+int MOS6502::LDX_ZPG() { 
     
     x = memory->Read(memory->Read(pc++)); 
    
     (x == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (x < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 3;                           // Clock cycles
 }
 
-void MOS6502::LDY_ZPG() { 
+int MOS6502::LDY_ZPG() { 
     
     y = memory->Read(memory->Read(pc++)); 
     
     (y == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (y < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 3;                           // Clock cycles
 }
 
-void MOS6502::LDA_ZPG_X() { 
+int MOS6502::LDA_ZPG_X() { 
 
     unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
     
@@ -383,9 +437,11 @@ void MOS6502::LDA_ZPG_X() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 4;                           // Clock cycles
 }
 
-void MOS6502::LDY_ZPG_X() { 
+int MOS6502::LDY_ZPG_X() { 
     
     unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
     
@@ -394,9 +450,11 @@ void MOS6502::LDY_ZPG_X() {
     (y == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (y < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 4;                           // Clock cycles
 }
 
-void MOS6502::LDX_ZPG_Y() { 
+int MOS6502::LDX_ZPG_Y() { 
 
     unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)y;
     
@@ -405,9 +463,11 @@ void MOS6502::LDX_ZPG_Y() {
     (x == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (x < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 4;                           // Clock cycles
 } 
 
-void MOS6502::LDA_IND_X() {
+int MOS6502::LDA_IND_X() {
     
     unsigned char indAddress;   /* Zero page address */
     unsigned int address;       /* Absolute address */
@@ -422,9 +482,11 @@ void MOS6502::LDA_IND_X() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 6;                           // Clock cycles
 }
 
-void MOS6502::LDA_IND_Y() {
+int MOS6502::LDA_IND_Y() {
     
     unsigned char indAddress;   /* Zero page address */
     unsigned int address;       /* Absolute address */
@@ -439,9 +501,11 @@ void MOS6502::LDA_IND_Y() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 5;                           // Clock cycles
 }
 
-void MOS6502::STA_ABS() {
+int MOS6502::STA_ABS() {
     
     unsigned int address;           /* Absolute address */
     
@@ -449,9 +513,11 @@ void MOS6502::STA_ABS() {
     address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
     
     memory->Write(address,ac);      /* mem[address] <- ac */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::STX_ABS() {
+int MOS6502::STX_ABS() {
     
     unsigned int address;           /* Absolute address */
     
@@ -459,9 +525,11 @@ void MOS6502::STX_ABS() {
     address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
     
     memory->Write(address,x);       /* mem[address] <- x */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::STY_ABS() {
+int MOS6502::STY_ABS() {
     
     unsigned int address;           /* Absolute address */
     
@@ -469,9 +537,11 @@ void MOS6502::STY_ABS() {
     address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
     
     memory->Write(address,y);       /* mem[address] <- y */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::STA_ABS_X() {
+int MOS6502::STA_ABS_X() {
     
     unsigned int address;           /* Absolute address */
     
@@ -479,9 +549,11 @@ void MOS6502::STA_ABS_X() {
     address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
     address = address + (unsigned char)x;
     memory->Write(address,ac);      /* mem[address] <- ac */
+
+    return 5;                       // Clock cycles
 }
 
-void MOS6502::STA_ABS_Y() {
+int MOS6502::STA_ABS_Y() {
     
     unsigned int address;           /* Absolute address */
     
@@ -489,36 +561,59 @@ void MOS6502::STA_ABS_Y() {
     address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
     address = address + (unsigned char)y;
     memory->Write(address,ac);      /* mem[address] <- ac */
+
+    return 5;                       // Clock cycles
 }
 
-void MOS6502::STA_ZPG() { memory->Write(memory->Read(pc++),ac); }
+int MOS6502::STA_ZPG() { 
 
-void MOS6502::STY_ZPG() { memory->Write(memory->Read(pc++),y); }
+    memory->Write(memory->Read(pc++),ac); 
 
-void MOS6502::STX_ZPG() { memory->Write(memory->Read(pc++),x); } 
+    return 3;                       // Clock cycles
+}
 
-void MOS6502::STA_ZPG_X() { 
+int MOS6502::STY_ZPG() { 
+
+    memory->Write(memory->Read(pc++),y); 
+
+    return 3;                       // Clock cycles
+}
+
+int MOS6502::STX_ZPG() { 
+
+    memory->Write(memory->Read(pc++),x); 
+
+    return 3;                       // Clock cycles
+} 
+
+int MOS6502::STA_ZPG_X() { 
     
     unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
     
     memory->Write(zeroPageAddress,ac); 
+
+    return 4;                       // Clock cycles
 } 
 
-void MOS6502::STY_ZPG_X() { 
+int MOS6502::STY_ZPG_X() { 
     
     unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
     
     memory->Write(zeroPageAddress,y); 
+
+    return 4;                       // Clock cycles
 } 
 
-void MOS6502::STX_ZPG_Y() { 
+int MOS6502::STX_ZPG_Y() { 
     
     unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)y;
     
     memory->Write(zeroPageAddress,x); 
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::STA_IND_X() {
+int MOS6502::STA_IND_X() {
     
     unsigned char indAddress;   /* Zero page address */
     unsigned int address;       /* Absolute address */
@@ -529,9 +624,11 @@ void MOS6502::STA_IND_X() {
     address = (memory->Read(indAddress++)<<8) | address; /* Read the high byte address and concatenates with the low byte  */
 
     memory->Write(address,ac);              /* mem[mem[indAddress+x]] <- ac */
+
+    return 6;                       // Clock cycles
 }
 
-void MOS6502::STA_IND_Y() {
+int MOS6502::STA_IND_Y() {
     
     unsigned char indAddress;   /* Zero page address */
     unsigned int address;       /* Absolute address */
@@ -542,54 +639,66 @@ void MOS6502::STA_IND_Y() {
     address = (memory->Read(indAddress++)<<8) | address; /* Read the high byte address and concatenates with the low byte  */
     address = address + (unsigned char)y;
     memory->Write(address,ac);              /* mem[mem[indAddress]+y] <- ac */
+
+    return 6;                       // Clock cycles
 }
 
-void MOS6502::AND_IMM() { 
+int MOS6502::AND_IMM() { 
     
     ac = ac & memory->Read(pc++);
 
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 2;                       // Clock cycles
 }
 
-void MOS6502::ORA_IMM() { 
+int MOS6502::ORA_IMM() { 
     
     ac = ac | memory->Read(pc++);
 
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 2;                       // Clock cycles
 }
 
-void MOS6502::EOR_IMM() { 
+int MOS6502::EOR_IMM() { 
     
     ac = ac ^ memory->Read(pc++);
 
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 2;                       // Clock cycles
 }
 
-void MOS6502::AND_ZPG() { 
+int MOS6502::AND_ZPG() { 
     
     ac = ac & memory->Read(memory->Read(pc++)); 
 
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 3;                       // Clock cycles
 }
 
-void MOS6502::ORA_ZPG() { 
+int MOS6502::ORA_ZPG() { 
     
     ac = ac | memory->Read(memory->Read(pc++)); 
 
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 3;                       // Clock cycles
 }
 
-void MOS6502::AND_ZPG_X() { 
+int MOS6502::AND_ZPG_X() { 
 
     unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
     
@@ -598,9 +707,11 @@ void MOS6502::AND_ZPG_X() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::ORA_ZPG_X() { 
+int MOS6502::ORA_ZPG_X() { 
 
     unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
     
@@ -609,9 +720,11 @@ void MOS6502::ORA_ZPG_X() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::EOR_ZPG_X() { 
+int MOS6502::EOR_ZPG_X() { 
 
     unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
     
@@ -620,9 +733,11 @@ void MOS6502::EOR_ZPG_X() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::EOR_ABS() {
+int MOS6502::EOR_ABS() {
     
     unsigned int address;           /* Absolute address */
     
@@ -634,9 +749,11 @@ void MOS6502::EOR_ABS() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::AND_ABS() {
+int MOS6502::AND_ABS() {
     
     unsigned int address;           /* Absolute address */
     
@@ -648,9 +765,11 @@ void MOS6502::AND_ABS() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::ORA_ABS() {
+int MOS6502::ORA_ABS() {
     
     unsigned int address;           /* Absolute address */
     
@@ -662,18 +781,22 @@ void MOS6502::ORA_ABS() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::EOR_ZPG() { 
+int MOS6502::EOR_ZPG() { 
     
     ac = ac ^ memory->Read(memory->Read(pc++)); 
 
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 3;                       // Clock cycles
 }
 
-void MOS6502::AND_ABS_X() {
+int MOS6502::AND_ABS_X() {
     
     unsigned int address;       /* Absolute address */
     
@@ -685,9 +808,11 @@ void MOS6502::AND_ABS_X() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::ORA_ABS_X() {
+int MOS6502::ORA_ABS_X() {
     
     unsigned int address;       /* Absolute address */
     
@@ -699,9 +824,11 @@ void MOS6502::ORA_ABS_X() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::EOR_ABS_X() {
+int MOS6502::EOR_ABS_X() {
     
     unsigned int address;       /* Absolute address */
     
@@ -713,9 +840,11 @@ void MOS6502::EOR_ABS_X() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::AND_ABS_Y() {
+int MOS6502::AND_ABS_Y() {
     
     unsigned int address;       /* Absolute address */
     
@@ -727,9 +856,11 @@ void MOS6502::AND_ABS_Y() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::ORA_ABS_Y() {
+int MOS6502::ORA_ABS_Y() {
     
     unsigned int address;       /* Absolute address */
     
@@ -741,9 +872,11 @@ void MOS6502::ORA_ABS_Y() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::EOR_ABS_Y() {
+int MOS6502::EOR_ABS_Y() {
     
     unsigned int address;       /* Absolute address */
     
@@ -755,9 +888,11 @@ void MOS6502::EOR_ABS_Y() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::AND_IND_X() {
+int MOS6502::AND_IND_X() {
     
     unsigned char indAddress;   /* Zero page address */
     unsigned int address;       /* Absolute address */
@@ -772,9 +907,11 @@ void MOS6502::AND_IND_X() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 6;                       // Clock cycles
 }
 
-void MOS6502::ORA_IND_X() {
+int MOS6502::ORA_IND_X() {
     
     unsigned char indAddress;   /* Zero page address */
     unsigned int address;       /* Absolute address */
@@ -789,9 +926,11 @@ void MOS6502::ORA_IND_X() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 6;                       // Clock cycles
 }
 
-void MOS6502::EOR_IND_X() {
+int MOS6502::EOR_IND_X() {
     
     unsigned char indAddress;   /* Zero page address */
     unsigned int address;       /* Absolute address */
@@ -806,9 +945,11 @@ void MOS6502::EOR_IND_X() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 6;                       // Clock cycles
 }
 
-void MOS6502::AND_IND_Y() {
+int MOS6502::AND_IND_Y() {
     
     unsigned char indAddress;   /* Zero page address */
     unsigned int address;       /* Absolute address */
@@ -823,9 +964,11 @@ void MOS6502::AND_IND_Y() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 5;                       // Clock cycles
 }
 
-void MOS6502::ORA_IND_Y() {
+int MOS6502::ORA_IND_Y() {
     
     unsigned char indAddress;   /* Zero page address */
     unsigned int address;       /* Absolute address */
@@ -840,9 +983,11 @@ void MOS6502::ORA_IND_Y() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 5;                       // Clock cycles
 }
 
-void MOS6502::EOR_IND_Y() {
+int MOS6502::EOR_IND_Y() {
     
     unsigned char indAddress;   /* Zero page address */
     unsigned int address;       /* Absolute address */
@@ -857,9 +1002,11 @@ void MOS6502::EOR_IND_Y() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 5;                       // Clock cycles
 }
 
-void MOS6502::INC_ZPG() { 
+int MOS6502::INC_ZPG() { 
     
     char data;
     unsigned char zeroPageAddress = memory->Read(pc++);
@@ -871,9 +1018,11 @@ void MOS6502::INC_ZPG() {
     (data == 0) ? p.Z = 1 : p.Z = 0;       /* Set/Reset Zero flag */
     
     (data < 0) ? p.N = 1 : p.N = 0;        /* Set/Reset Negative flag */
+
+    return 5;                       // Clock cycles
 }
 
-void MOS6502::INC_ZPG_X() { 
+int MOS6502::INC_ZPG_X() { 
 
     char data;  
     unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
@@ -885,9 +1034,11 @@ void MOS6502::INC_ZPG_X() {
     (data == 0) ? p.Z = 1 : p.Z = 0;       /* Set/Reset Zero flag */
     
     (data < 0) ? p.N = 1 : p.N = 0;        /* Set/Reset Negative flag */
+
+    return 6;                       // Clock cycles
 }
 
-void MOS6502::INC_ABS() {
+int MOS6502::INC_ABS() {
     
     char data;
     unsigned int address;           /* Absolute address */
@@ -902,9 +1053,11 @@ void MOS6502::INC_ABS() {
     (data == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (data < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 6;                       // Clock cycles
 }
 
-void MOS6502::INC_ABS_X() {
+int MOS6502::INC_ABS_X() {
     
     char data;
     unsigned int address;       /* Absolute address */
@@ -919,9 +1072,11 @@ void MOS6502::INC_ABS_X() {
     (data == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (data < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 7;                       // Clock cycles
 }
 
-void MOS6502::DEC_ZPG() { 
+int MOS6502::DEC_ZPG() { 
     
     char data;
     unsigned char zeroPageAddress = memory->Read(pc++);
@@ -933,9 +1088,11 @@ void MOS6502::DEC_ZPG() {
     (data == 0) ? p.Z = 1 : p.Z = 0;       /* Set/Reset Zero flag */
     
     (data < 0) ? p.N = 1 : p.N = 0;        /* Set/Reset Negative flag */
+
+    return 5;                       // Clock cycles
 }
 
-void MOS6502::DEC_ZPG_X() { 
+int MOS6502::DEC_ZPG_X() { 
 
     char data;  
     unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
@@ -947,9 +1104,11 @@ void MOS6502::DEC_ZPG_X() {
     (data == 0) ? p.Z = 1 : p.Z = 0;       /* Set/Reset Zero flag */
     
     (data < 0) ? p.N = 1 : p.N = 0;        /* Set/Reset Negative flag */
+
+    return 6;                       // Clock cycles
 }
 
-void MOS6502::DEC_ABS() {
+int MOS6502::DEC_ABS() {
     
     char data;
     unsigned int address;           /* Absolute address */
@@ -964,9 +1123,11 @@ void MOS6502::DEC_ABS() {
     (data == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (data < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 6;                       // Clock cycles
 }
 
-void MOS6502::DEC_ABS_X() {
+int MOS6502::DEC_ABS_X() {
     
     char data;
     unsigned int address;       /* Absolute address */
@@ -981,9 +1142,11 @@ void MOS6502::DEC_ABS_X() {
     (data == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     (data < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
+
+    return 7;                       // Clock cycles
 }
 
-void MOS6502::LSR_ACC() {
+int MOS6502::LSR_ACC() {
            
     p.C = BIT_CHECK(ac,0);     /* Carry flag = ac[0] */
     
@@ -992,9 +1155,11 @@ void MOS6502::LSR_ACC() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;     /* Set/Reset Zero flag */
     
     p.N = 0;   /* Clear negative flag */
+
+    return 2;                       // Clock cycles
  }
 
-void MOS6502::ASL_ACC() {
+int MOS6502::ASL_ACC() {
             
     p.C = BIT_CHECK(ac,7);     /* Carry flag = ac[7] */
     
@@ -1003,9 +1168,11 @@ void MOS6502::ASL_ACC() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;    /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;     /* Set/Reset Negative flag */
+
+    return 2;                       // Clock cycles
 }
 
-void MOS6502::ASL_ZPG() { 
+int MOS6502::ASL_ZPG() { 
     
     char data;
     unsigned char zeroPageAddress = memory->Read(pc++);
@@ -1020,9 +1187,11 @@ void MOS6502::ASL_ZPG() {
     (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     (data < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+
+    return 5;                       // Clock cycles
 }
 
-void MOS6502::LSR_ZPG() { 
+int MOS6502::LSR_ZPG() { 
     
     unsigned char data;     /* Result is always positive */
     unsigned char zeroPageAddress = memory->Read(pc++);
@@ -1037,9 +1206,11 @@ void MOS6502::LSR_ZPG() {
     (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     p.N = 0;   /* Clear negative flag */
+
+    return 5;                       // Clock cycles
 }
 
-void MOS6502::ASL_ZPG_X() { 
+int MOS6502::ASL_ZPG_X() { 
 
     char data;  
     unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
@@ -1054,9 +1225,11 @@ void MOS6502::ASL_ZPG_X() {
     (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     (data < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+
+    return 6;                       // Clock cycles
 }
 
-void MOS6502::LSR_ZPG_X() { 
+int MOS6502::LSR_ZPG_X() { 
 
     unsigned char data;     /* Result is always positive */
     unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
@@ -1071,9 +1244,11 @@ void MOS6502::LSR_ZPG_X() {
     (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     p.N = 0;   /* Clear negative flag */
+
+    return 6;                       // Clock cycles
 }
 
-void MOS6502::LSR_ABS_X() {
+int MOS6502::LSR_ABS_X() {
     
     unsigned char data;         /* Result is always positive */
     unsigned int address;       /* Absolute address */
@@ -1091,9 +1266,11 @@ void MOS6502::LSR_ABS_X() {
     (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     p.N = 0;   /* Clear negative flag */
+
+    return 7;                       // Clock cycles
 }
 
-void MOS6502::ASL_ABS_X() {
+int MOS6502::ASL_ABS_X() {
     
     char data;
     unsigned int address;       /* Absolute address */
@@ -1111,9 +1288,11 @@ void MOS6502::ASL_ABS_X() {
     (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     (data < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+
+    return 7;                       // Clock cycles
 }
 
-void MOS6502::LSR_ABS() {
+int MOS6502::LSR_ABS() {
     
     unsigned char data;             /* Result is always positive */
     unsigned int address;           /* Absolute address */
@@ -1131,9 +1310,11 @@ void MOS6502::LSR_ABS() {
     (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     p.N = 0;   /* Clear negative flag */
+
+    return 6;                       // Clock cycles
 }
 
-void MOS6502::ASL_ABS() {
+int MOS6502::ASL_ABS() {
     
     char data;
     unsigned int address;           /* Absolute address */
@@ -1151,9 +1332,11 @@ void MOS6502::ASL_ABS() {
     (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     (data < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+
+    return 6;                       // Clock cycles
 }
 
-void MOS6502::ROL_ACC() {
+int MOS6502::ROL_ACC() {
             
     char carry = p.C;
     
@@ -1164,9 +1347,11 @@ void MOS6502::ROL_ACC() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;    /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;     /* Set/Reset Negative flag */
+
+    return 2;                       // Clock cycles
 }
 
-void MOS6502::ROR_ACC() {
+int MOS6502::ROR_ACC() {
             
     char carry = p.C;
     
@@ -1177,9 +1362,11 @@ void MOS6502::ROR_ACC() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;    /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;     /* Set/Reset Negative flag */
+
+    return 2;                       // Clock cycles
 }
 
-void MOS6502::ROL_ZPG() { 
+int MOS6502::ROL_ZPG() { 
     
     char data;
     unsigned char zeroPageAddress = memory->Read(pc++);
@@ -1196,9 +1383,11 @@ void MOS6502::ROL_ZPG() {
     (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     (data < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+
+    return 5;                       // Clock cycles
 }
 
-void MOS6502::ROR_ZPG() { 
+int MOS6502::ROR_ZPG() { 
     
     unsigned char data;             /* Result is always positive */
     unsigned char zeroPageAddress = memory->Read(pc++);
@@ -1215,9 +1404,11 @@ void MOS6502::ROR_ZPG() {
     (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     (data < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+
+    return 5;                       // Clock cycles
 }
 
-void MOS6502::ROL_ZPG_X() { 
+int MOS6502::ROL_ZPG_X() { 
 
     char data;  
     unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
@@ -1234,9 +1425,11 @@ void MOS6502::ROL_ZPG_X() {
     (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     (data < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+
+    return 6;                       // Clock cycles
 }
 
-void MOS6502::ROR_ZPG_X() { 
+int MOS6502::ROR_ZPG_X() { 
     
     unsigned char data;             /* Result is always positive */
     unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
@@ -1253,9 +1446,11 @@ void MOS6502::ROR_ZPG_X() {
     (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     (data < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+
+    return 6;                       // Clock cycles
 }
 
-void MOS6502::ROL_ABS() {
+int MOS6502::ROL_ABS() {
     
     char data;
     unsigned int address;           /* Absolute address */
@@ -1275,9 +1470,11 @@ void MOS6502::ROL_ABS() {
     (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     (data < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+
+    return 6;                       // Clock cycles
 }
 
-void MOS6502::ROR_ABS() {
+int MOS6502::ROR_ABS() {
     
     unsigned char data;             /* Result is always positive */
     unsigned int address;           /* Absolute address */
@@ -1297,9 +1494,11 @@ void MOS6502::ROR_ABS() {
     (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     p.N = 0;   /* Clear negative flag */
+
+    return 6;                       // Clock cycles
 }
 
-void MOS6502::ROL_ABS_X() {
+int MOS6502::ROL_ABS_X() {
     
     char data;
     unsigned int address;           /* Absolute address */
@@ -1320,9 +1519,11 @@ void MOS6502::ROL_ABS_X() {
     (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     (data < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+
+    return 7;                       // Clock cycles
 }
 
-void MOS6502::ROR_ABS_X() {
+int MOS6502::ROR_ABS_X() {
     
     unsigned char data;             /* Result is always positive */
     unsigned int address;           /* Absolute address */
@@ -1343,6 +1544,8 @@ void MOS6502::ROR_ABS_X() {
     (data == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     p.N = 0;   /* Clear negative flag */
+
+    return 7;                       // Clock cycles
 }
 
 
@@ -1350,7 +1553,7 @@ void MOS6502::ROR_ABS_X() {
 between zero and 255, treating both numbers as positive integers. If you use signed 
 arithmetic, you'll need to correct for this when comparing two numbers.
 */
-void MOS6502::CMP_IMM() {
+int MOS6502::CMP_IMM() {
           
     char data = memory->Read(pc++);
     char result = ac - data;                /* ac - # */
@@ -1361,9 +1564,11 @@ void MOS6502::CMP_IMM() {
     
     /* Unsigned comparison */
     ((unsigned char)data <= (unsigned char)ac) ? p.C = 1 : p.C = 0;       /* Set/Reset Carry flag */  
+
+    return 2;                       // Clock cycles
 }
 
-void MOS6502::CMP_ZPG() {
+int MOS6502::CMP_ZPG() {
     
     char result;
     char data = (char)memory->Read(memory->Read(pc++));
@@ -1376,9 +1581,11 @@ void MOS6502::CMP_ZPG() {
     
     /* Unsigned comparison */
     ((unsigned char)data <= (unsigned char)ac) ? p.C = 1 : p.C = 0;       /* Set/Reset Carry flag */  
+
+    return 3;                       // Clock cycles
 }
 
-void MOS6502::CMP_ABS() {
+int MOS6502::CMP_ABS() {
     
     unsigned int address;                       /* Absolute address */
     char result;
@@ -1396,9 +1603,11 @@ void MOS6502::CMP_ABS() {
     
     /* Unsigned comparison */
     ((unsigned char)data <= (unsigned char)ac) ? p.C = 1 : p.C = 0;       /* Set/Reset Carry flag */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::CMP_ZPG_X() {
+int MOS6502::CMP_ZPG_X() {
         
     unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
     char data = (char)memory->Read(zeroPageAddress);
@@ -1412,9 +1621,11 @@ void MOS6502::CMP_ZPG_X() {
     
     /* Unsigned comparison */
     ((unsigned char)data <= (unsigned char)ac) ? p.C = 1 : p.C = 0;       /* Set/Reset Carry flag */  
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::CMP_ABS_X() {
+int MOS6502::CMP_ABS_X() {
     
     unsigned int address;                       /* Absolute address */
     char result;
@@ -1433,9 +1644,11 @@ void MOS6502::CMP_ABS_X() {
     
     /* Unsigned comparison */
     ((unsigned char)data <= (unsigned char)ac) ? p.C = 1 : p.C = 0;       /* Set/Reset Carry flag */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::CMP_ABS_Y() {
+int MOS6502::CMP_ABS_Y() {
     
     unsigned int address;                       /* Absolute address */
     char result;
@@ -1454,9 +1667,11 @@ void MOS6502::CMP_ABS_Y() {
     
     /* Unsigned comparison */
     ((unsigned char)data <= (unsigned char)ac) ? p.C = 1 : p.C = 0;       /* Set/Reset Carry flag */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::CMP_IND_X() {
+int MOS6502::CMP_IND_X() {
     
     unsigned char indAddress;   /* Zero page address */
     unsigned int address;       /* Absolute address */
@@ -1477,9 +1692,11 @@ void MOS6502::CMP_IND_X() {
     
     /* Unsigned comparison */
     ((unsigned char)data <= (unsigned char)ac) ? p.C = 1 : p.C = 0;       /* Set/Reset Carry flag */
+
+    return 6;                       // Clock cycles
 }
 
-void MOS6502::CMP_IND_Y() {
+int MOS6502::CMP_IND_Y() {
     
     unsigned char indAddress;   /* Zero page address */
     unsigned int address;       /* Absolute address */
@@ -1501,9 +1718,11 @@ void MOS6502::CMP_IND_Y() {
     
     /* Unsigned comparison */
     ((unsigned char)data <= (unsigned char)ac) ? p.C = 1 : p.C = 0;       /* Set/Reset Carry flag */
+
+    return 5;                       // Clock cycles
 }
 
-void MOS6502::CPX_IMM() {
+int MOS6502::CPX_IMM() {
           
     char data = memory->Read(pc++);
     char result = x - data;                /* x - # */
@@ -1513,10 +1732,12 @@ void MOS6502::CPX_IMM() {
     (result < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
     
     /* Unsigned comparison */
-    ((unsigned char)data <= (unsigned char)x) ? p.C = 1 : p.C = 0;       /* Set/Reset Carry flag */  
+    ((unsigned char)data <= (unsigned char)x) ? p.C = 1 : p.C = 0;       /* Set/Reset Carry flag */ 
+
+    return 2;                       // Clock cycles 
 }
 
-void MOS6502::CPX_ABS() {
+int MOS6502::CPX_ABS() {
     
     unsigned int address;                       /* Absolute address */
     char result;
@@ -1534,9 +1755,11 @@ void MOS6502::CPX_ABS() {
     
     /* Unsigned comparison */
     ((unsigned char)data <= (unsigned char)x) ? p.C = 1 : p.C = 0;       /* Set/Reset Carry flag */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::CPX_ZPG() {
+int MOS6502::CPX_ZPG() {
     
     char result;
     char data = (char)memory->Read(memory->Read(pc++));
@@ -1549,9 +1772,11 @@ void MOS6502::CPX_ZPG() {
     
     /* Unsigned comparison */
     ((unsigned char)data <= (unsigned char)x) ? p.C = 1 : p.C = 0;       /* Set/Reset Carry flag */  
+
+    return 3;                       // Clock cycles
 }
 
-void MOS6502::CPY_IMM() {
+int MOS6502::CPY_IMM() {
           
     char data = memory->Read(pc++);
     char result = y - data;                /* y - # */
@@ -1562,9 +1787,11 @@ void MOS6502::CPY_IMM() {
     
     /* Unsigned comparison */
     ((unsigned char)data <= (unsigned char)y) ? p.C = 1 : p.C = 0;       /* Set/Reset Carry flag */  
+
+    return 2;                       // Clock cycles
 }
 
-void MOS6502::CPY_ABS() {
+int MOS6502::CPY_ABS() {
     
     unsigned int address;                       /* Absolute address */
     char result;
@@ -1582,9 +1809,11 @@ void MOS6502::CPY_ABS() {
     
     /* Unsigned comparison */
     ((unsigned char)data <= (unsigned char)y) ? p.C = 1 : p.C = 0;       /* Set/Reset Carry flag */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::CPY_ZPG() {
+int MOS6502::CPY_ZPG() {
     
     char result;
     char data = (char)memory->Read(memory->Read(pc++));
@@ -1596,10 +1825,12 @@ void MOS6502::CPY_ZPG() {
     (result < 0) ? p.N = 1 : p.N = 0;      /* Set/Reset Negative flag */
     
     /* Unsigned comparison */
-    ((unsigned char)data <= (unsigned char)y) ? p.C = 1 : p.C = 0;       /* Set/Reset Carry flag */  
+    ((unsigned char)data <= (unsigned char)y) ? p.C = 1 : p.C = 0;       /* Set/Reset Carry flag */ 
+
+    return 3;                       // Clock cycles 
 }
 
-void MOS6502::BIT_ZPG() { 
+int MOS6502::BIT_ZPG() { 
     
     unsigned char result;
     unsigned char data = memory->Read(memory->Read(pc++));
@@ -1611,9 +1842,11 @@ void MOS6502::BIT_ZPG() {
     p.N = BIT_CHECK(data,7);                /* Set/Reset Negative flag */
     
     p.V = BIT_CHECK(data,6);                /* Set/Reset Carry flag */
+
+    return 3;                       // Clock cycles
 }
 
-void MOS6502::BIT_ABS() {
+int MOS6502::BIT_ABS() {
     
     unsigned int address;           /* Absolute address */
     unsigned char result;
@@ -1631,19 +1864,23 @@ void MOS6502::BIT_ABS() {
     p.N = BIT_CHECK(data,7);                /* Set/Reset Negative flag */
     
     p.V = BIT_CHECK(data,6);                /* Set/Reset Carry flag */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::JMP_ABS() {
+int MOS6502::JMP_ABS() {
     
     unsigned int address;           /* Absolute address */
     
     address = memory->Read(pc++);   /* Read the low byte address */
     address = (memory->Read(pc++)<<8) | address;    /* Read the high byte address */
     
-    pc = address;                   
+    pc = address;    
+
+    return 3;                       // Clock cycles               
 }
 
-void MOS6502::JMP_IND() {
+int MOS6502::JMP_IND() {
     
     unsigned int indAddress;            /* Indirect address */
     unsigned int address;               /* Absolute address */
@@ -1657,9 +1894,11 @@ void MOS6502::JMP_IND() {
     address = (memory->Read(indAddress++)<<8) | address;    /* Read the high byte address */
     
     pc = address;  
+
+    return 5;                       // Clock cycles
 }
 
-void MOS6502::JSR() {
+int MOS6502::JSR() {
     
     unsigned int address;           /* Absolute address */
     
@@ -1669,10 +1908,12 @@ void MOS6502::JSR() {
     memory->Write(0x100|s--,(pc & 0xFF00)>>8);    /* Store the return address high byte */
     memory->Write(0x100|s--,(pc & 0xFF));         /* Store the return address low byte */
     
-    pc = address;                   
+    pc = address;  
+
+    return 6;                       // Clock cycles                 
 }
 
-void MOS6502::RTS() {
+int MOS6502::RTS() {
     
     unsigned int address;           /* Absolute address */
     
@@ -1680,9 +1921,11 @@ void MOS6502::RTS() {
     address = (memory->Read(0x100|++s)<<8) | address;    /* Read the high byte address */
     
     pc = address;
+
+    return 6;                       // Clock cycles
 }
 
-void MOS6502::RTI() {
+int MOS6502::RTI() {
     
     unsigned int address;           /* Absolute address */
     
@@ -1693,100 +1936,145 @@ void MOS6502::RTI() {
     address = (memory->Read(0x100|++s)<<8) | address;    /* Read the high byte address */
     
     pc = address;
+
+    return 6;                       // Clock cycles
 }
 
-void MOS6502::PHP() { memory->Write(0x100|s--,p.status); }
+int MOS6502::PHP() { 
 
-void MOS6502::PLP() { p.status = memory->Read(0x100|++s); }
+    memory->Write(0x100|s--,p.status); 
 
-void MOS6502::PHA() { memory->Write(0x100|s--,ac); }
+    return 3;                       // Clock cycles
+}
 
-void MOS6502::PLA() { ac = memory->Read(0x100|++s); }
+int MOS6502::PLP() { 
 
-void MOS6502::TAX() {
+    p.status = memory->Read(0x100|++s); 
+
+    return 4;                       // Clock cycles
+}
+
+int MOS6502::PHA() { 
+
+    memory->Write(0x100|s--,ac); 
+
+    return 3;                       // Clock cycles
+}
+
+int MOS6502::PLA() { 
+
+    ac = memory->Read(0x100|++s); 
+
+    return 4;                       // Clock cycles
+}
+
+int MOS6502::TAX() {
     
     x = ac;
     
     (x < 0) ? p.N = 1 : p.N = 0;        /* Set/Reset Negative flag */
     
     (x == 0) ? p.Z = 1: p.Z = 0;        /* Set/Reset Zero flag */
+
+    return 2;                       // Clock cycles
 }
 
-void MOS6502::TAY() {
+int MOS6502::TAY() {
     
     y = ac;
     
     (y < 0) ? p.N = 1 : p.N = 0;        /* Set/Reset Negative flag */
     
     (y == 0) ? p.Z = 1: p.Z = 0;        /* Set/Reset Zero flag */
+
+    return 2;                       // Clock cycles
 }
 
-void MOS6502::TXA() {
+int MOS6502::TXA() {
     
     ac = x;
     
     (ac < 0) ? p.N = 1 : p.N = 0;        /* Set/Reset Negative flag */
     
     (ac == 0) ? p.Z = 1: p.Z = 0;        /* Set/Reset Zero flag */
+
+    return 2;                       // Clock cycles
 }
 
-void MOS6502::TYA() {
+int MOS6502::TYA() {
     
     ac = y;
     
     (ac < 0) ? p.N = 1 : p.N = 0;        /* Set/Reset Negative flag */
     
     (ac == 0) ? p.Z = 1: p.Z = 0;        /* Set/Reset Zero flag */
+
+    return 2;                       // Clock cycles
 }
 
-void MOS6502::DEX() {
+int MOS6502::DEX() {
     
     x--;
     
     (x < 0) ? p.N = 1 : p.N = 0;        /* Set/Reset Negative flag */
     
     (x == 0) ? p.Z = 1: p.Z = 0;        /* Set/Reset Zero flag */
+
+    return 2;                       // Clock cycles
 }
 
-void MOS6502::DEY() {
+int MOS6502::DEY() {
     
     y--;
     
     (y < 0) ? p.N = 1 : p.N = 0;        /* Set/Reset Negative flag */
     
     (y == 0) ? p.Z = 1: p.Z = 0;        /* Set/Reset Zero flag */
+
+    return 2;                       // Clock cycles
 }
 
-void MOS6502::INX() {
+int MOS6502::INX() {
     
     x++;
     
     (x < 0) ? p.N = 1 : p.N = 0;        /* Set/Reset Negative flag */
     
     (x == 0) ? p.Z = 1: p.Z = 0;        /* Set/Reset Zero flag */
+
+    return 2;                       // Clock cycles
 }
 
-void MOS6502::INY() {
+int MOS6502::INY() {
     
     y++;
     
     (y < 0) ? p.N = 1 : p.N = 0;        /* Set/Reset Negative flag */
     
     (y == 0) ? p.Z = 1: p.Z = 0;        /* Set/Reset Zero flag */
+
+    return 2;                       // Clock cycles
 }
 
-void MOS6502::TXS() { s = x; }
+int MOS6502::TXS() { 
 
-void MOS6502::TSX() {
+    s = x; 
+
+    return 2;                       // Clock cycles
+}
+
+int MOS6502::TSX() {
     
     x = s;
     
     (x < 0) ? p.N = 1 : p.N = 0;        /* Set/Reset Negative flag */
     
     (x == 0) ? p.Z = 1: p.Z = 0;        /* Set/Reset Zero flag */
+
+    return 2;                       // Clock cycles
 }
 
-void MOS6502::ADC_IMM() { 
+int MOS6502::ADC_IMM() { 
     
     char data = memory->Read(pc++);
     int resultSigned;                   /* Used to detect overflow */
@@ -1806,9 +2094,11 @@ void MOS6502::ADC_IMM() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+
+    return 2;                       // Clock cycles
 }
 
-void MOS6502::SBC_IMM() { 
+int MOS6502::SBC_IMM() { 
     
     char data = ~memory->Read(pc++);    /* Complement */
     int resultSigned;                   /* Used to detect overflow */
@@ -1828,9 +2118,11 @@ void MOS6502::SBC_IMM() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+
+    return 2;                       // Clock cycles
 }
 
-void MOS6502::ADC_ZPG_X() { 
+int MOS6502::ADC_ZPG_X() { 
     
     unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
     char data = memory->Read(zeroPageAddress);
@@ -1851,9 +2143,11 @@ void MOS6502::ADC_ZPG_X() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::SBC_ZPG_X() { 
+int MOS6502::SBC_ZPG_X() { 
     
     unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
     char data = ~memory->Read(zeroPageAddress);     /* Complement */
@@ -1874,9 +2168,11 @@ void MOS6502::SBC_ZPG_X() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::ADC_ZPG() { 
+int MOS6502::ADC_ZPG() { 
     
     char data = memory->Read(memory->Read(pc++));
     int resultSigned;                   /* Used to detect overflow */
@@ -1896,9 +2192,11 @@ void MOS6502::ADC_ZPG() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+
+    return 3;                       // Clock cycles
 }
 
-void MOS6502::SBC_ZPG() { 
+int MOS6502::SBC_ZPG() { 
     
     char data = ~memory->Read(memory->Read(pc++));  /* Complement */
     int resultSigned;                   /* Used to detect overflow */
@@ -1918,9 +2216,11 @@ void MOS6502::SBC_ZPG() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+
+    return 3;                       // Clock cycles
 }
 
-void MOS6502::ADC_ABS() { 
+int MOS6502::ADC_ABS() { 
     
     unsigned int address;               /* Absolute address */
     int resultSigned;                   /* Used to detect overflow */
@@ -1946,9 +2246,11 @@ void MOS6502::ADC_ABS() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::SBC_ABS() { 
+int MOS6502::SBC_ABS() { 
     
     unsigned int address;               /* Absolute address */
     int resultSigned;                   /* Used to detect overflow */
@@ -1974,9 +2276,11 @@ void MOS6502::SBC_ABS() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::ADC_ABS_X() { 
+int MOS6502::ADC_ABS_X() { 
     
     unsigned int address;               /* Absolute address */
     int resultSigned;                   /* Used to detect overflow */
@@ -2003,9 +2307,11 @@ void MOS6502::ADC_ABS_X() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::SBC_ABS_X() { 
+int MOS6502::SBC_ABS_X() { 
     
     unsigned int address;               /* Absolute address */
     int resultSigned;                   /* Used to detect overflow */
@@ -2032,9 +2338,11 @@ void MOS6502::SBC_ABS_X() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::ADC_ABS_Y() { 
+int MOS6502::ADC_ABS_Y() { 
     
     unsigned int address;               /* Absolute address */
     int resultSigned;                   /* Used to detect overflow */
@@ -2061,9 +2369,11 @@ void MOS6502::ADC_ABS_Y() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::SBC_ABS_Y() { 
+int MOS6502::SBC_ABS_Y() { 
     
     unsigned int address;               /* Absolute address */
     int resultSigned;                   /* Used to detect overflow */
@@ -2090,9 +2400,11 @@ void MOS6502::SBC_ABS_Y() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+
+    return 4;                       // Clock cycles
 }
 
-void MOS6502::ADC_IND_X() { 
+int MOS6502::ADC_IND_X() { 
     
     unsigned char indAddress;           /* Zero page address */
     unsigned int address;               /* Absolute address */
@@ -2121,9 +2433,11 @@ void MOS6502::ADC_IND_X() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+
+    return 6;                       // Clock cycles
 }
 
-void MOS6502::SBC_IND_X() { 
+int MOS6502::SBC_IND_X() { 
     
     unsigned char indAddress;           /* Zero page address */
     unsigned int address;               /* Absolute address */
@@ -2152,9 +2466,11 @@ void MOS6502::SBC_IND_X() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+
+    return 6;                       // Clock cycles
 }
 
-void MOS6502::ADC_IND_Y() { 
+int MOS6502::ADC_IND_Y() { 
     
     unsigned char indAddress;           /* Zero page address */
     unsigned int address;               /* Absolute address */
@@ -2184,9 +2500,11 @@ void MOS6502::ADC_IND_Y() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+
+    return 5;                       // Clock cycles
 }
 
-void MOS6502::SBC_IND_Y() { 
+int MOS6502::SBC_IND_Y() { 
     
     unsigned char indAddress;           /* Zero page address */
     unsigned int address;               /* Absolute address */
@@ -2216,85 +2534,141 @@ void MOS6502::SBC_IND_Y() {
     (ac == 0) ? p.Z = 1 : p.Z = 0;      /* Set/Reset Zero flag */
     
     (ac < 0) ? p.N = 1 : p.N = 0;       /* Set/Reset Negative flag */
+
+    return 5;                       // Clock cycles
 }
 
-void MOS6502::BEQ() {
+int MOS6502::BEQ() {
     
     char offset = memory->Read(pc++);
 
     if (p.Z == 1)
         pc = pc + offset;
+
+    return 2;                       // Clock cycles
 }
 
-void MOS6502::BNE() {
+int MOS6502::BNE() {
     
     char offset = memory->Read(pc++);
 
     if (p.Z == 0)
         pc = pc + offset;
+
+    return 2;                       // Clock cycles
 }
 
-void MOS6502::BMI() {
+int MOS6502::BMI() {
     
     char offset = memory->Read(pc++);
 
     if (p.N == 1)
         pc = pc + offset;
+
+    return 2;                       // Clock cycles
 }
 
-void MOS6502::BPL() {
+int MOS6502::BPL() {
     
     char offset = memory->Read(pc++);
 
     if (p.N == 0)
         pc = pc + offset;
+
+    return 2;                       // Clock cycles
 }
 
-void MOS6502::BCC() {
+int MOS6502::BCC() {
     
     char offset = memory->Read(pc++);
 
     if (p.C == 0)
         pc = pc + offset;
+
+    return 2;                       // Clock cycles
 }
 
-void MOS6502::BCS() {
+int MOS6502::BCS() {
     
     char offset = memory->Read(pc++);
 
     if (p.C == 1)
         pc = pc + offset;
+
+    return 2;                       // Clock cycles
 }
 
-void MOS6502::BVS() {
+int MOS6502::BVS() {
     
     char offset = memory->Read(pc++);
 
     if (p.V == 1)
         pc = pc + offset;
+
+    return 2;                       // Clock cycles
 }
 
-void MOS6502::BVC() {
+int MOS6502::BVC() {
     
     char offset = memory->Read(pc++);
 
     if (p.V == 0)
         pc = pc + offset;
+
+    return 2;                       // Clock cycles
 }
 
-void MOS6502::CLC() { p.C = 0; }
+int MOS6502::CLC() { 
 
-void MOS6502::SEC() { p.C = 1; }
+    p.C = 0; 
 
-void MOS6502::CLV() { p.V = 0; }
+    return 2;                       // Clock cycles
+}
 
-void MOS6502::CLD() { p.D = 0; }
+int MOS6502::SEC() { 
 
-void MOS6502::SED() { p.D = 1; }
+    p.C = 1; 
 
-void MOS6502::SEI() { p.I = 1; }
+    return 2;                       // Clock cycles
+}
 
-void MOS6502::CLI() { p.I = 0; }
+int MOS6502::CLV() { 
 
-void MOS6502::NOP() {}
+    p.V = 0; 
+
+    return 2;                       // Clock cycles
+}
+
+int MOS6502::CLD() { 
+
+    p.D = 0; 
+
+    return 2;                       // Clock cycles
+}
+
+int MOS6502::SED() { 
+
+    p.D = 1; 
+
+    return 2;                       // Clock cycles
+}
+
+int MOS6502::SEI() { 
+
+    p.I = 1; 
+
+    return 2;                       // Clock cycles
+}
+
+int MOS6502::CLI() { 
+
+    p.I = 0; 
+
+    return 2;                       // Clock cycles
+}
+
+int MOS6502::NOP() {
+
+    return 2;                       // Clock cycles
+}
 

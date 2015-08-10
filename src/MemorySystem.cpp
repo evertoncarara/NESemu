@@ -1,16 +1,25 @@
-#include "NESMemorySystem.h"
+#include "MemorySystem.h"
 #include <string.h>     // memcpy()
 #include <cstdlib>      // abort()
 #include <cassert>
+#include <iostream>
+#include <fstream>
+#include "PictureProcessingUnit.h"
+#include "MOS6502.h"
 
 #include <stdio.h>
 
 #define PPU         0x2000
 #define APU         0x4000
-#define OAMDMA      0x4014 // OAM DMA register (high byte) Access: write
+#define OAMDMA      0x4014  // OAM DMA register (high byte) Access: write
+#define JOYSTICK1   0x4016  // Player 1 joystick address
 #define PRG_ROM_LOW 0x8000  // PRG-ROM lower bank address
 #define PRG_ROM_UP  0xC000  // PRG-ROM upper bank address
+#define OAMADDR     3       // OAM (Object Attribute Memory) address port (Access: write)
 
+
+
+using namespace std;
 
 /*** 
 *   NES Memory map
@@ -24,14 +33,14 @@
 *       PRG-ROM         : 8000-FFFF
 ***/
 
-NESMemorySystem::NESMemorySystem() {  
+MemorySystem::MemorySystem() {  
 
     cpuMemory = new unsigned char[64*1024]; // 64KB
     ppuMemory = new unsigned char[64*1024]; // 64 KB
     ppu = NULL;
 }
 
-NESMemorySystem::~NESMemorySystem() { 
+MemorySystem::~MemorySystem() { 
     delete [] cpuMemory; 
     delete [] ppuMemory;
 }
@@ -40,7 +49,7 @@ NESMemorySystem::~NESMemorySystem() {
  *  Load game code into the CPU memory
  *  Load pattern table,if any, into the PPU memory 
  ***/
-void NESMemorySystem::Load(char *fileName) {
+void MemorySystem::Load(char *fileName) {
 
     ifstream romFile(fileName, ios::binary);
     
@@ -68,6 +77,9 @@ void NESMemorySystem::Load(char *fileName) {
     cout << "Size: " << fileSize << " Bytes" << endl;
     cout << "PRG_ROM: " << static_cast<int>(iNES_header->PRG_ROM) << " * 16KB" << endl;
     cout << "CHR_ROM: " << static_cast<int>(iNES_header->CHR_ROM) << " * 8KB (0 means the board uses CHR-RAM)" << endl;
+    unsigned char mapper;
+    mapper =  (iNES_header->flag7 & 0xF0) | ((iNES_header->flag6 & 0xF0)>>4);
+    cout << "Mapper: " << static_cast<int>(mapper) << endl;
     
     
     /* Game code loading */
@@ -101,37 +113,12 @@ void NESMemorySystem::Load(char *fileName) {
     delete [] buffer;
 }
 
-void NESMemorySystem::cpuDump(int startAddr, int bytes) {
+void MemorySystem::Init(PictureProcessingUnit *ppu) {  
 
-    printf("CPU Memory dump...\n");
-
-    for(int i=startAddr,j=0; i<(startAddr+bytes); i++,j++) {
-        if ( (i%16) == 0) {
-            printf("\n");
-            printf("[%04X]: ",(startAddr+j));
-        }
-
-        printf("%02X ",cpuMemory[startAddr+j]);   
-    }
-    printf("\n");
+    this->ppu = ppu;
 }
 
-void NESMemorySystem::ppuDump(int startAddr, int bytes) {
-
-    printf("PPU Memory dump...\n");
-
-    for(int i=startAddr,j=0; i<(startAddr+bytes); i++,j++) {
-        if ( (i%16) == 0) {
-            printf("\n");
-            printf("[%04X]: ",startAddr+j);
-        }
-
-        printf("%02X ",ppuMemory[startAddr+j]);     
-    }
-    printf("\n");
-}
-
-unsigned char NESMemorySystem::Read(unsigned int address) {
+unsigned char MemorySystem::Read(unsigned int address) {
 
     unsigned char data;
 
@@ -147,18 +134,21 @@ unsigned char NESMemorySystem::Read(unsigned int address) {
         address = (address & 0x2007) & 7;      /* Mirroring and select the register number (0-7) */
         data = ppu->ReadRegister(address);        
     }
+    else if (address == JOYSTICK1) {
+        data = (latchJoystick1>>joystick1Shift) & 0x01;
+        joystick1Shift++;
+    }
     else {
-        printf("WARNING: CPU reading from unimplemented address: %X\n",address);
-        abort();
+        //printf("WARNING: CPU reading from unimplemented address: %X\n",address);
+        //abort();
+        data = 0;
     }  
     
     return data;
 }
 
-void NESMemorySystem::Write(unsigned int address, unsigned char data) {
-    
-    cpuMemory[address] = data;
-    
+void MemorySystem::Write(unsigned int address, unsigned char data) {
+        
     if (address < PPU ) {               /* CPU RAM */
         address = address & 0x7FF;      /* Mirroring */
         cpuMemory[address] = data;
@@ -169,16 +159,59 @@ void NESMemorySystem::Write(unsigned int address, unsigned char data) {
         ppu->WriteRegister(address,data);        
     }
     else if (address == OAMDMA)
-        ppu->StartDMA(data);
+        StartDMA(data);
+    
+    /***
+     * The joysticks are accessed through memory port addresses $4016 and $4017.  First the game code write the value $01 
+     * then the value $00 to port $4016.  This tells the joysticks to latch the current button positions. Then the game code 
+     * read from $4016 for first player or $4017 for second player. The buttons are sent one at a time, in bit 0.  
+     * If bit 0 is 1, the button is pressed. If bit 0 is 0, the button is not pressed.  
+     **/
+    else if (address == JOYSTICK1 && data == 0) {
+        latchJoystick1 = joystick1State;
+        joystick1Shift = 0;     // Set shift to read the first button
+    }
+    
     else {
-        printf("WARNING: CPU writing from unimplemented address: %X\n",address);
+        //printf("WARNING: CPU writing from unimplemented address: [%X]: %X\n",address,data);
         //abort();
     } 
  }
 
+void MemorySystem::StartDMA(unsigned char addressHighByte) {
 
-void NESMemorySystem::SetPictureProcessingUnit(PictureProcessingUnit *ppu) {  this->ppu = ppu; }
+    unsigned int cpuMemoryAddress = addressHighByte<<8 | ppu->ReadRegister(OAMADDR);  // Source: CPU RAM address
 
-unsigned char *NESMemorySystem::GetPPUMemory() { return ppuMemory; }
+    ppu->FillSpriteMemory(&cpuMemory[cpuMemoryAddress]);
+}
 
- unsigned char *NESMemorySystem::GetCPUMemory() { return cpuMemory; }
+void MemorySystem::cpuDump(int startAddr, int bytes) {
+
+    printf("CPU Memory dump...\n");
+
+    for(int i=startAddr,j=0; i<(startAddr+bytes); i++,j++) {
+        if ( (i%16) == 0) {
+            printf("\n");
+            printf("[%04X]: ",(startAddr+j));
+        }
+
+        printf("%02X ",cpuMemory[startAddr+j]);   
+    }
+    printf("\n");
+}
+
+void MemorySystem::ppuDump(int startAddr, int bytes) {
+
+    printf("PPU Memory dump...\n");
+
+    for(int i=startAddr,j=0; i<(startAddr+bytes); i++,j++) {
+        if ( (i%16) == 0) {
+            printf("\n");
+            printf("[%04X]: ",startAddr+j);
+        }
+
+        printf("%02X ",ppuMemory[startAddr+j]);     
+    }
+    printf("\n");
+}
+
