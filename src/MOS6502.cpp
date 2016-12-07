@@ -430,7 +430,7 @@ int MOS6502::LDY_ZPG() {
 
 int MOS6502::LDA_ZPG_X() { 
 
-    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    unsigned char zeroPageAddress = memory->Read(pc++) + (unsigned char)x;
     
     ac = memory->Read(zeroPageAddress); 
     
@@ -443,7 +443,7 @@ int MOS6502::LDA_ZPG_X() {
 
 int MOS6502::LDY_ZPG_X() { 
     
-    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    unsigned char zeroPageAddress = memory->Read(pc++) + (unsigned char)x;
     
     y = memory->Read(zeroPageAddress); 
     
@@ -456,7 +456,7 @@ int MOS6502::LDY_ZPG_X() {
 
 int MOS6502::LDX_ZPG_Y() { 
 
-    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)y;
+    unsigned char zeroPageAddress = memory->Read(pc++) + (unsigned char)y;
     
     x = memory->Read(zeroPageAddress); 
     
@@ -588,7 +588,7 @@ int MOS6502::STX_ZPG() {
 
 int MOS6502::STA_ZPG_X() { 
     
-    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    unsigned char zeroPageAddress = memory->Read(pc++) + (unsigned char)x;
     
     memory->Write(zeroPageAddress,ac); 
 
@@ -597,7 +597,7 @@ int MOS6502::STA_ZPG_X() {
 
 int MOS6502::STY_ZPG_X() { 
     
-    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    unsigned char zeroPageAddress = memory->Read(pc++) + (unsigned char)x;
     
     memory->Write(zeroPageAddress,y); 
 
@@ -606,7 +606,7 @@ int MOS6502::STY_ZPG_X() {
 
 int MOS6502::STX_ZPG_Y() { 
     
-    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)y;
+    unsigned char zeroPageAddress = memory->Read(pc++) + (unsigned char)y;
     
     memory->Write(zeroPageAddress,x); 
 
@@ -700,7 +700,7 @@ int MOS6502::ORA_ZPG() {
 
 int MOS6502::AND_ZPG_X() { 
 
-    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    unsigned char zeroPageAddress = memory->Read(pc++) + (unsigned char)x;
     
     ac = ac & memory->Read(zeroPageAddress); 
     
@@ -713,7 +713,7 @@ int MOS6502::AND_ZPG_X() {
 
 int MOS6502::ORA_ZPG_X() { 
 
-    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    unsigned char zeroPageAddress = memory->Read(pc++) + (unsigned char)x;
     
     ac = ac | memory->Read(zeroPageAddress); 
     
@@ -726,7 +726,7 @@ int MOS6502::ORA_ZPG_X() {
 
 int MOS6502::EOR_ZPG_X() { 
 
-    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    unsigned char zeroPageAddress = memory->Read(pc++) + (unsigned char)x;
     
     ac = ac ^ memory->Read(zeroPageAddress); 
     
@@ -1025,7 +1025,7 @@ int MOS6502::INC_ZPG() {
 int MOS6502::INC_ZPG_X() { 
 
     char data;  
-    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    unsigned char zeroPageAddress = memory->Read(pc++) + (unsigned char)x;
     
     data = memory->Read(zeroPageAddress); 
     data++;
@@ -1095,7 +1095,7 @@ int MOS6502::DEC_ZPG() {
 int MOS6502::DEC_ZPG_X() { 
 
     char data;  
-    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    unsigned char zeroPageAddress = memory->Read(pc++) + (unsigned char)x;
     
     data = memory->Read(zeroPageAddress); 
     data--;
@@ -1213,7 +1213,7 @@ int MOS6502::LSR_ZPG() {
 int MOS6502::ASL_ZPG_X() { 
 
     char data;  
-    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    unsigned char zeroPageAddress = memory->Read(pc++) + (unsigned char)x;
     
     data = memory->Read(zeroPageAddress); 
     
@@ -1232,7 +1232,7 @@ int MOS6502::ASL_ZPG_X() {
 int MOS6502::LSR_ZPG_X() { 
 
     unsigned char data;     /* Result is always positive */
-    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    unsigned char zeroPageAddress = memory->Read(pc++) + (unsigned char)x;
     
     data = memory->Read(zeroPageAddress);
     
@@ -1389,7 +1389,7 @@ int MOS6502::ROL_ZPG() {
 
 int MOS6502::ROR_ZPG() { 
     
-    unsigned char data;             /* Result is always positive */
+    char data;          
     unsigned char zeroPageAddress = memory->Read(pc++);
     char carry = p.C;
     
@@ -1411,7 +1411,7 @@ int MOS6502::ROR_ZPG() {
 int MOS6502::ROL_ZPG_X() { 
 
     char data;  
-    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    unsigned char zeroPageAddress = memory->Read(pc++) + (unsigned char)x;
     char carry = p.C;
     
     data = memory->Read(zeroPageAddress);
@@ -1431,8 +1431,8 @@ int MOS6502::ROL_ZPG_X() {
 
 int MOS6502::ROR_ZPG_X() { 
     
-    unsigned char data;             /* Result is always positive */
-    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    char data;             
+    unsigned char zeroPageAddress = memory->Read(pc++) + (unsigned char)x;
     char carry = p.C;
     
     data = memory->Read(zeroPageAddress);
@@ -1609,7 +1609,7 @@ int MOS6502::CMP_ABS() {
 
 int MOS6502::CMP_ZPG_X() {
         
-    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    unsigned char zeroPageAddress = memory->Read(pc++) + (unsigned char)x;
     char data = (char)memory->Read(zeroPageAddress);
     char result;
     
@@ -2124,7 +2124,7 @@ int MOS6502::SBC_IMM() {
 
 int MOS6502::ADC_ZPG_X() { 
     
-    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    unsigned char zeroPageAddress = memory->Read(pc++) + (unsigned char)x;
     char data = memory->Read(zeroPageAddress);
     int resultSigned;                   /* Used to detect overflow */
     unsigned int resultUnsigned;        /* Used to detect carry */
@@ -2149,7 +2149,7 @@ int MOS6502::ADC_ZPG_X() {
 
 int MOS6502::SBC_ZPG_X() { 
     
-    unsigned char zeroPageAddress = memory->Read(pc++)+(unsigned char)x;
+    unsigned char zeroPageAddress = memory->Read(pc++) + (unsigned char)x;
     char data = ~memory->Read(zeroPageAddress);     /* Complement */
     int resultSigned;                               /* Used to detect overflow */
     unsigned int resultUnsigned;                    /* Used to detect carry */
